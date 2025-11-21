@@ -4,10 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "vite --mode development --host",
+    "dev:staging": "vite --mode staging",
+    "dev:production": "vite --mode production",
+    "build": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest",
     "test:coverage": "vitest run --coverage"
   },
@@ -24,7 +27,17 @@
     "@heroicons/react": "^2.1.5",
     "clsx": "^2.1.1",
     "react-hot-toast": "^2.4.1",
-    "date-fns": "^3.6.0"
+    "date-fns": "^3.6.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@iconify/react": "^6.0.2",
+    "@mui/icons-material": "^7.3.5",
+    "@mui/material": "^7.3.5",
+    "chart.js": "^4.5.1",
+    "lucide-react": "^0.544.0",
+    "react-chartjs-2": "^5.3.1",
+    "react-toastify": "^11.0.5",
+    "sweetalert2": "^11.23.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
