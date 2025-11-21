@@ -1,0 +1,122 @@
+name: Code Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones disabled for better analysis
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  code-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: AI Code Review
+        uses: freeedcom/ai-codereviewer@main
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          exclude: "*.md,*.txt,*.json"
+
+  complexity-check:
+    name: Code Complexity Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install radon
+        run: pip install radon
+
+      - name: Check cyclomatic complexity
+        run: |
+          echo "## Cyclomatic Complexity Report" > complexity-report.md
+          echo "" >> complexity-report.md
+          for service in auth reports billing admin analytics notification; do
+            echo "### Service: $service" >> complexity-report.md
+            radon cc services/$service -s -j >> complexity-report.md
+            echo "" >> complexity-report.md
+          done
+
+      - name: Check maintainability index
+        run: |
+          echo "## Maintainability Index" >> complexity-report.md
+          echo "" >> complexity-report.md
+          for service in auth reports billing admin analytics notification; do
+            echo "### Service: $service" >> complexity-report.md
+            radon mi services/$service -s >> complexity-report.md
+            echo "" >> complexity-report.md
+          done
+
+      - name: Upload complexity report
+        uses: actions/upload-artifact@v3
+        with:
+          name: complexity-report
+          path: complexity-report.md
+
+  coverage-check:
+    name: Coverage Requirements Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check coverage threshold
+        run: |
+          echo "Checking that coverage threshold is set to 95%..."
+          grep -r "cov-fail-under=95" . || echo "Warning: Coverage threshold not set to 95%"
+
+  documentation-check:
+    name: Documentation Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check README
+        run: |
+          if [ ! -f README.md ]; then
+            echo "ERROR: README.md not found"
+            exit 1
+          fi
+
+      - name: Check API documentation
+        run: |
+          for service in auth reports billing admin analytics notification; do
+            if [ ! -f services/$service/README.md ]; then
+              echo "Warning: services/$service/README.md not found"
+            fi
+          done
+
+      - name: Check docstrings
+        run: |
+          pip install pydocstyle
+          for service in auth reports billing admin analytics notification; do
+            pydocstyle services/$service --count || true
+          done

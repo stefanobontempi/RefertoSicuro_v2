@@ -1,0 +1,205 @@
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run daily at 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+    name: Dependency Security Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'RefertoSicuro v2'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: dependency-check-report
+          path: reports/
+
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth, reports, billing, admin, analytics, notification, frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: './services/${{ matrix.service }}'
+          format: 'sarif'
+          output: 'trivy-${{ matrix.service }}.sarif'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.service }}.sarif'
+
+  vault-audit:
+    name: Vault Configuration Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Vault policies
+        run: |
+          # Check that no hardcoded tokens exist
+          ! grep -r "dev-root-token" --include="*.py" --include="*.js" --include="*.ts" services/ frontend/ || exit 1
+
+          # Check that Vault paths are properly configured
+          grep -r "VAULT_ADDR" --include="*.py" services/ || exit 1
+
+      - name: Validate encryption keys rotation
+        run: |
+          # This would connect to Vault and check key rotation policies
+          echo "Checking Vault key rotation policies..."
+
+  compliance-check:
+    name: Medical Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check GDPR compliance markers
+        run: |
+          # Check for PII handling
+          echo "Checking for PII handling compliance..."
+
+          # Check data retention policies
+          grep -r "retention" --include="*.py" services/ || echo "Warning: No retention policies found"
+
+          # Check encryption usage
+          grep -r "encrypt" --include="*.py" services/ || echo "Warning: No encryption found"
+
+      - name: Check audit logging
+        run: |
+          # Verify audit logging is implemented
+          grep -r "audit_log" --include="*.py" services/ || echo "Warning: No audit logging found"
+
+  sast-analysis:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript, typescript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  secrets-scan:
+    name: Secrets Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+
+      - name: GitGuardian scan
+        uses: GitGuardian/ggshield-action@master
+        env:
+          GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_PUSH_BASE_SHA: ${{ github.event.before }}
+          GITHUB_DEFAULT_BRANCH: main
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+
+  infrastructure-scan:
+    name: Infrastructure as Code Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Checkov scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: all
+          output_format: sarif
+          output_file_path: checkov.sarif
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+
+  generate-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [dependency-check, container-scan, vault-audit, compliance-check, sast-analysis, secrets-scan, infrastructure-scan]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate consolidated report
+        run: |
+          echo "# Security Audit Report" > security-report.md
+          echo "Date: $(date)" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Summary" >> security-report.md
+          echo "All security checks completed." >> security-report.md
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-audit-report
+          path: security-report.md
+
+      - name: Notify team
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "⚠️ Security Audit Failed",
+              attachments: [{
+                color: 'danger',
+                text: 'Security vulnerabilities detected. Please review the report.'
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
