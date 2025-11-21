@@ -1,0 +1,238 @@
+# =====================================================
+# RefertoSicuro v2 - .gitignore
+# =====================================================
+
+# Environment Variables - CRITICAL: Never commit secrets!
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+
+# Secrets and Keys - NEVER commit these!
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+vault/data/
+vault/logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+.virtualenv
+
+# Testing
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Type Checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+.npm
+.yarn
+.pnp.*
+
+# Frontend Build
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/out/
+.cache/
+.parcel-cache/
+.turbo/
+*.tsbuildinfo
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.fleet/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+mongodb_data/
+redis_data/
+data/
+backups/*.sql
+backups/*.tar.gz
+backups/*.dump
+
+# Logs
+logs/
+*.log
+log/
+tmp/
+temp/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Application specific
+uploads/
+static/collected/
+media/
+reports/
+exports/
+*.pid
+celerybeat-schedule
+celerybeat.pid
+
+# Monitoring & Metrics
+prometheus_data/
+grafana_data/
+loki_data/
+jaeger_data/
+
+# MinIO / S3
+minio_data/
+.minio.sys/
+
+# Vault
+vault_data/
+vault/file/
+vault/logs/
+vault-init.txt
+
+# Kong
+kong_db_data/
+
+# Portainer
+portainer_data/
+
+# pgAdmin
+pgadmin_data/
+
+# RedisInsight
+redisinsight_data/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+.~*
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Certificates (but keep examples)
+*.crt
+*.key
+*.pem
+!examples/*.example.crt
+!examples/*.example.key
+!examples/*.example.pem
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# But keep important files
+!.gitkeep
+!.env.example
+!.dockerignore

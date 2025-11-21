@@ -1,0 +1,670 @@
+version: '3.8'
+
+x-common-variables: &common-variables
+  ENVIRONMENT: development
+  LOG_LEVEL: debug
+  TZ: Europe/Rome
+
+x-postgres-variables: &postgres-variables
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: refertosicuro_dev
+  POSTGRES_USER: refertosicuro
+  POSTGRES_PASSWORD: dev_password_change_me
+
+services:
+  # ===========================================
+  # CORE INFRASTRUCTURE
+  # ===========================================
+
+  # PostgreSQL - Main Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: rs_postgres
+    environment:
+      <<: *postgres-variables
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      POSTGRES_HOST_AUTH_METHOD: md5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./scripts/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U refertosicuro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - refertosicuro_net
+
+  # Redis - Cache & Pub/Sub
+  redis:
+    image: redis:7-alpine
+    container_name: rs_redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - refertosicuro_net
+
+  # MongoDB - Analytics
+  mongodb:
+    image: mongo:7.0
+    container_name: rs_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: dev_password_change_me
+      MONGO_INITDB_DATABASE: refertosicuro_analytics
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - refertosicuro_net
+
+  # RabbitMQ - Message Queue
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: rs_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: dev_password_change_me
+      RABBITMQ_DEFAULT_VHOST: refertosicuro
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - refertosicuro_net
+
+  # ===========================================
+  # DEVELOPMENT TOOLS
+  # ===========================================
+
+  # pgAdmin - PostgreSQL GUI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rs_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@refertosicuro.local
+      PGADMIN_DEFAULT_PASSWORD: pgadmin_password
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - refertosicuro_net
+
+  # Mongo Express - MongoDB GUI
+  mongo-express:
+    image: mongo-express:latest
+    container_name: rs_mongo_express
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: dev_password_change_me
+      ME_CONFIG_MONGODB_URL: mongodb://admin:dev_password_change_me@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongodb
+    networks:
+      - refertosicuro_net
+
+  # RedisInsight - Redis GUI
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: rs_redisinsight
+    ports:
+      - "8001:8001"
+    volumes:
+      - redisinsight_data:/db
+    depends_on:
+      - redis
+    networks:
+      - refertosicuro_net
+
+  # Adminer - Universal Database Management
+  adminer:
+    image: adminer:latest
+    container_name: rs_adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - mongodb
+    networks:
+      - refertosicuro_net
+
+  # ===========================================
+  # MONITORING & OBSERVABILITY
+  # ===========================================
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rs_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - refertosicuro_net
+
+  # Grafana - Metrics Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rs_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: grafana_password
+      GF_INSTALL_PLUGINS: redis-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - refertosicuro_net
+
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: rs_loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    networks:
+      - refertosicuro_net
+
+  # Promtail - Log Collector
+  promtail:
+    image: grafana/promtail:latest
+    container_name: rs_promtail
+    volumes:
+      - ./configs/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/promtail-config.yml
+    depends_on:
+      - loki
+    networks:
+      - refertosicuro_net
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: rs_jaeger
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ':9411'
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks:
+      - refertosicuro_net
+
+  # ===========================================
+  # SECRET MANAGEMENT
+  # ===========================================
+
+  # HashiCorp Vault - Secret Management
+  vault:
+    image: vault:1.15
+    container_name: rs_vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_API_ADDR: http://0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault_data:/vault/data
+      - ./configs/vault:/vault/config:ro
+      - ./scripts/vault/init.sh:/vault/init.sh:ro
+    command: server -dev -dev-root-token-id="dev-root-token"
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - refertosicuro_net
+
+  # Vault UI (separate for better security)
+  vault-ui:
+    image: djenriquez/vault-ui:latest
+    container_name: rs_vault_ui
+    environment:
+      VAULT_URL_DEFAULT: http://vault:8200
+      VAULT_AUTH_DEFAULT: TOKEN
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
+    ports:
+      - "8201:8000"
+    depends_on:
+      - vault
+    networks:
+      - refertosicuro_net
+
+  # ===========================================
+  # API GATEWAY
+  # ===========================================
+
+  # Kong - API Gateway
+  kong-database:
+    image: postgres:13-alpine
+    container_name: rs_kong_db
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: kong_password
+    volumes:
+      - kong_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - refertosicuro_net
+
+  kong-migration:
+    image: kong:3.4-alpine
+    container_name: rs_kong_migration
+    command: kong migrations bootstrap
+    depends_on:
+      kong-database:
+        condition: service_healthy
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+    networks:
+      - refertosicuro_net
+    restart: on-failure
+
+  kong:
+    image: kong:3.4-alpine
+    container_name: rs_kong
+    depends_on:
+      kong-database:
+        condition: service_healthy
+      kong-migration:
+        condition: service_completed_successfully
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    ports:
+      - "8000:8000"  # Proxy port
+      - "8443:8443"  # Proxy SSL
+      - "8002:8001"  # Admin API
+      - "8444:8444"  # Admin SSL
+    networks:
+      - refertosicuro_net
+
+  # Konga - Kong GUI
+  konga:
+    image: pantsel/konga:latest
+    container_name: rs_konga
+    environment:
+      NODE_ENV: development
+      TOKEN_SECRET: some_secret_token
+    ports:
+      - "1337:1337"
+    depends_on:
+      - kong
+    networks:
+      - refertosicuro_net
+
+  # ===========================================
+  # MICROSERVICES (Development Mode)
+  # ===========================================
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile.dev
+    container_name: rs_auth_service
+    environment:
+      <<: *common-variables
+      <<: *postgres-variables
+      SERVICE_NAME: auth-service
+      PORT: 8010
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:dev_password_change_me@rabbitmq:5672/refertosicuro
+      # Vault configuration
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token  # Only for dev! Use proper auth in production
+      VAULT_PATH: secret/data/auth-service
+      # Non-sensitive configs
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+    volumes:
+      - ./services/auth:/app
+      - ./shared:/shared:ro
+    ports:
+      - "8010:8010"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8010 --reload
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - vault
+    networks:
+      - refertosicuro_net
+
+  # Reports Service
+  reports-service:
+    build:
+      context: ./services/reports
+      dockerfile: Dockerfile.dev
+    container_name: rs_reports_service
+    environment:
+      <<: *common-variables
+      <<: *postgres-variables
+      SERVICE_NAME: reports-service
+      PORT: 8011
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:dev_password_change_me@rabbitmq:5672/refertosicuro
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY}
+      AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY}
+      AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION}
+    volumes:
+      - ./services/reports:/app
+      - ./shared:/shared:ro
+    ports:
+      - "8011:8011"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8011 --reload
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - refertosicuro_net
+
+  # Billing Service
+  billing-service:
+    build:
+      context: ./services/billing
+      dockerfile: Dockerfile.dev
+    container_name: rs_billing_service
+    environment:
+      <<: *common-variables
+      <<: *postgres-variables
+      SERVICE_NAME: billing-service
+      PORT: 8012
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:dev_password_change_me@rabbitmq:5672/refertosicuro
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
+    volumes:
+      - ./services/billing:/app
+      - ./shared:/shared:ro
+    ports:
+      - "8012:8012"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8012 --reload
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - refertosicuro_net
+
+  # Admin Service
+  admin-service:
+    build:
+      context: ./services/admin
+      dockerfile: Dockerfile.dev
+    container_name: rs_admin_service
+    environment:
+      <<: *common-variables
+      <<: *postgres-variables
+      SERVICE_NAME: admin-service
+      PORT: 8013
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:dev_password_change_me@rabbitmq:5672/refertosicuro
+    volumes:
+      - ./services/admin:/app
+      - ./shared:/shared:ro
+    ports:
+      - "8013:8013"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8013 --reload
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - refertosicuro_net
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./services/analytics
+      dockerfile: Dockerfile.dev
+    container_name: rs_analytics_service
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: analytics-service
+      PORT: 8014
+      MONGODB_URL: mongodb://admin:dev_password_change_me@mongodb:27017/refertosicuro_analytics?authSource=admin
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:dev_password_change_me@rabbitmq:5672/refertosicuro
+    volumes:
+      - ./services/analytics:/app
+      - ./shared:/shared:ro
+    ports:
+      - "8014:8014"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8014 --reload
+    depends_on:
+      - mongodb
+      - redis
+      - rabbitmq
+    networks:
+      - refertosicuro_net
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./services/notification
+      dockerfile: Dockerfile.dev
+    container_name: rs_notification_service
+    environment:
+      <<: *common-variables
+      <<: *postgres-variables
+      SERVICE_NAME: notification-service
+      PORT: 8015
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:dev_password_change_me@rabbitmq:5672/refertosicuro
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+    volumes:
+      - ./services/notification:/app
+      - ./shared:/shared:ro
+    ports:
+      - "8015:8015"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8015 --reload
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - refertosicuro_net
+
+  # ===========================================
+  # FRONTEND
+  # ===========================================
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: rs_frontend
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://localhost:8000
+      VITE_AUTH_SERVICE_URL: http://localhost:8010
+      VITE_REPORTS_SERVICE_URL: http://localhost:8011
+      VITE_BILLING_SERVICE_URL: http://localhost:8012
+      VITE_ADMIN_SERVICE_URL: http://localhost:8013
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: npm run dev
+    networks:
+      - refertosicuro_net
+
+  # ===========================================
+  # DEVELOPMENT UTILITIES
+  # ===========================================
+
+  # Mailhog - Email Testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: rs_mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - refertosicuro_net
+
+  # MinIO - S3-compatible storage for development
+  minio:
+    image: minio/minio:latest
+    container_name: rs_minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - refertosicuro_net
+
+  # Swagger UI - API Documentation
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: rs_swagger_ui
+    environment:
+      URLS: "[
+        {name: 'Auth Service', url: 'http://localhost:8010/openapi.json'},
+        {name: 'Reports Service', url: 'http://localhost:8011/openapi.json'},
+        {name: 'Billing Service', url: 'http://localhost:8012/openapi.json'},
+        {name: 'Admin Service', url: 'http://localhost:8013/openapi.json'},
+        {name: 'Analytics Service', url: 'http://localhost:8014/openapi.json'},
+        {name: 'Notification Service', url: 'http://localhost:8015/openapi.json'}
+      ]"
+    ports:
+      - "8082:8080"
+    networks:
+      - refertosicuro_net
+
+  # Portainer - Docker Management UI
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: rs_portainer
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    ports:
+      - "9443:9443"
+      - "9002:9000"
+    restart: always
+    networks:
+      - refertosicuro_net
+
+networks:
+  refertosicuro_net:
+    driver: bridge
+    name: refertosicuro_network
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  rabbitmq_data:
+  vault_data:
+  kong_db_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  pgadmin_data:
+  redisinsight_data:
+  minio_data:
+  portainer_data:
