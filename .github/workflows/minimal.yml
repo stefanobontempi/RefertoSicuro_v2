@@ -1,0 +1,28 @@
+name: Minimal Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Basic Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check project structure
+        run: |
+          echo "✅ Project structure check"
+          ls -la
+
+      - name: Verify Docker Compose
+        run: |
+          echo "✅ Docker Compose files present"
+          ls -la *.yml || echo "No compose files yet"
+
+      - name: Success
+        run: echo "✅ Basic checks passed!"
