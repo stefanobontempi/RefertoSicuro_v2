@@ -25,8 +25,9 @@ services:
       POSTGRES_HOST_AUTH_METHOD: md5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./scripts/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./scripts/db/00-init-databases.sql:/docker-entrypoint-initdb.d/00-init-databases.sql:ro
+      - ./scripts/db/01-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+      - ./scripts/db/02-seed-data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
