@@ -27,7 +27,7 @@ export const fetchCsrfToken = async () => {
   try {
     debugLog('Fetching CSRF token from server');
 
-    const response = await axios.get(`${API_CONFIG.backendURL}/auth/csrf-token`, {
+    const response = await axios.get(`${API_CONFIG.backendURL}/api/v1/auth/csrf-token`, {
       withCredentials: true, // Include cookies in request
     });
 

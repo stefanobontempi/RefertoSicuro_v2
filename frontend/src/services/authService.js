@@ -19,7 +19,7 @@ const CSRF_TOKEN_DURATION = 3600 * 1000; // 1 hour
  */
 const fetchCsrfToken = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/csrf-token`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`, {
       credentials: 'include', // Include cookies
     });
 
@@ -84,7 +84,7 @@ class AuthService {
         'Content-Type': 'application/json',
       });
 
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
         method: 'POST',
         credentials: 'include', // SECURITY (VULN-SEC-003 fix): Enable cookie support
         headers,
@@ -124,7 +124,7 @@ class AuthService {
         requestBody.sub_account_id = subAccountId;
       }
 
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         credentials: 'include', // SECURITY (VULN-SEC-003 fix): Send/receive httpOnly cookies
         headers,
@@ -191,7 +191,7 @@ class AuthService {
         'Content-Type': 'application/json',
       });
 
-      await fetch(`${API_BASE_URL}/auth/logout`, {
+      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
         method: 'POST',
         credentials: 'include', // Send cookies to be cleared
         headers,
@@ -211,7 +211,7 @@ class AuthService {
   async getCurrentUser() {
     try {
       // SECURITY (VULN-SEC-003 fix): Cookies sent automatically, no Authorization header
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
         method: 'GET',
         credentials: 'include', // Send httpOnly cookies automatically
       });
@@ -239,7 +239,7 @@ class AuthService {
   async getSubscription() {
     try {
       // SECURITY (VULN-SEC-003 fix): Cookies sent automatically
-      const response = await fetch(`${API_BASE_URL}/users/subscription`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/billing/subscription`, {
         method: 'GET',
         credentials: 'include', // Send httpOnly cookies automatically
       });
@@ -270,7 +270,7 @@ class AuthService {
         'Content-Type': 'application/json',
       });
 
-      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/profile`, {
         method: 'PUT',
         credentials: 'include', // Send httpOnly cookies automatically
         headers,
@@ -303,7 +303,7 @@ class AuthService {
         'Content-Type': 'application/json',
       });
 
-      const response = await fetch(`${API_BASE_URL}/billing/cancel-subscription`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/billing/subscription/cancel`, {
         method: 'POST',
         credentials: 'include', // Send httpOnly cookies automatically
         headers,
@@ -331,7 +331,7 @@ class AuthService {
   async getInvoices() {
     try {
       // SECURITY (VULN-SEC-003 fix): Cookies sent automatically
-      const response = await fetch(`${API_BASE_URL}/billing/invoices`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/billing/invoices`, {
         method: 'GET',
         credentials: 'include', // Send httpOnly cookies automatically
       });
@@ -381,7 +381,7 @@ class AuthService {
   async verifyToken() {
     // SECURITY (VULN-SEC-003 fix): Verify via API call with cookies
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify`, {
         method: 'GET',
         credentials: 'include', // Send httpOnly cookies automatically
       });
@@ -422,7 +422,7 @@ class AuthService {
         };
       }
 
-      const response = await fetch(`${API_BASE_URL}/auth/b2c/verify-email`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register/verify-email`, {
         method: 'POST',
         credentials: 'include', // SECURITY (VULN-SEC-003 fix): Enable cookie support
         headers,
@@ -450,7 +450,7 @@ class AuthService {
         'Content-Type': 'application/json',
       });
 
-      const response = await fetch(`${API_BASE_URL}/auth/b2c/confirm-email`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register/confirm-email`, {
         method: 'POST',
         credentials: 'include', // SECURITY (VULN-SEC-003 fix): Enable cookie support
         headers,
@@ -483,7 +483,7 @@ class AuthService {
         'Content-Type': 'application/json',
       });
 
-      const response = await fetch(`${API_BASE_URL}/auth/b2c/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register/complete`, {
         method: 'POST',
         credentials: 'include', // SECURITY (VULN-SEC-003 fix): Enable cookie support
         headers,

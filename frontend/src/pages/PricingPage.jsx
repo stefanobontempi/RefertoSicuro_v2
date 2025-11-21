@@ -98,7 +98,7 @@ const PricingPageNew = () => {
         const [tiersResponse, specialtiesResponse, featuresResponse] = await Promise.all([
           api.get('/pricing/tiers?customer_type=b2c'),
           api.get('/pricing/specialties'),
-          api.get('/platform-features/public')
+          api.get('/api/v1/features/public')
         ]);
 
         setTiers(tiersResponse.data);

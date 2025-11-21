@@ -19,7 +19,7 @@ const fetchCsrfToken = async () => {
   try {
     debugLog('Fetching CSRF token from server');
 
-    const response = await axios.get(`${API_CONFIG.backendURL}/auth/csrf-token`, {
+    const response = await axios.get(`${API_CONFIG.backendURL}/api/v1/auth/csrf-token`, {
       withCredentials: true, // Include cookies in request
     });
 
@@ -164,7 +164,7 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry && // Prevent infinite retry loop
-      !originalRequest.url?.includes('/auth/login') // Don't retry login endpoint
+      !originalRequest.url?.includes('/api/v1/auth/login') // Don't retry login endpoint
     ) {
       debugLog('Authentication failed (401), opening login modal');
       originalRequest._retry = true;
@@ -213,19 +213,19 @@ api.interceptors.response.use(
 // Reports API
 export const reportsAPI = {
   validate: (reportData) =>
-    api.post('/reports/validate', reportData),
+    api.post('/api/v1/reports/validate', reportData),
 
   improve: (reportData) =>
-    api.post('/reports/improve', reportData),
+    api.post('/api/v1/reports/improve', reportData),
 
   // Streaming endpoint with enhanced metrics (TTFT, tokens/sec)
   improveStreaming: (reportData) =>
-    api.post('/reports/improve-streaming', reportData),
+    api.post('/api/v1/reports/improve-streaming', reportData),
 
   // TRUE SSE streaming endpoint - visible real-time streaming
   improveStreamingSSE: async (reportData, onEvent) => {
     // SECURITY (VULN-SEC-003 fix): Use httpOnly cookies instead of Authorization header
-    const response = await fetch(`${API_CONFIG.baseURL}/reports/improve-streaming-sse`, {
+    const response = await fetch(`${API_CONFIG.baseURL}/api/v1/reports/improve-streaming-sse`, {
       method: 'POST',
       credentials: 'include', // Send httpOnly cookies
       headers: {
@@ -295,13 +295,13 @@ export const reportsAPI = {
   },
 
   getSuggestions: (reportData) =>
-    api.post('/reports/suggestions', reportData),
+    api.post('/api/v1/reports/suggestions', reportData),
 
   transcribe: (audioFile) => {
     const formData = new FormData();
     formData.append('audio_file', audioFile);
 
-    return api.post('/reports/transcribe', formData, {
+    return api.post('/api/v1/reports/transcribe', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -309,32 +309,32 @@ export const reportsAPI = {
   },
 
   health: () =>
-    api.get('/reports/health'),
+    api.get('/api/v1/reports/health'),
 };
 
 
 // Specialties API
 export const specialtiesAPI = {
   getAll: () =>
-    api.get('/specialties/'),
+    api.get('/api/v1/specialties'),
 
   getUserSpecialties: () =>
-    api.get('/specialties/user/me'),
+    api.get('/api/v1/specialtiesuser/me'),
 
   getUserAssistants: () =>
-    api.get('/specialties/user/me/assistants'),
+    api.get('/api/v1/specialtiesuser/me/assistants'),
 
   getById: (id) =>
-    api.get(`/specialties/${id}`),
+    api.get(`/api/v1/specialties/${id}`),
 };
 
 // Consent API
 export const consentAPI = {
   getTemplate: (consentType) =>
-    api.get(`/consent/templates/${consentType}`),
+    api.get(`/api/v1/consent/templates/${consentType}`),
 
   getAll: () =>
-    api.get('/consent/templates'),
+    api.get('/api/v1/consent/templates'),
 };
 
 // General API
@@ -343,7 +343,7 @@ export const generalAPI = {
     api.get('/health'),
 
   info: () =>
-    api.get('/info'),
+    api.get('/api/v1/info'),
 };
 
 // Axios instance for Input Templates with 403 silent handling
@@ -393,40 +393,40 @@ export const inputTemplatesAPI = {
     const params = {};
     if (specialtyId) params.specialty_id = specialtyId;
     if (isActive !== null) params.is_active = isActive;
-    return templatesApi.get('/input-templates/', { params });
+    return templatesApi.get('/api/v1/templates', { params });
   },
 
   // Get templates grouped by specialty
   getBySpecialty: () =>
-    templatesApi.get('/input-templates/by-specialty'),
+    templatesApi.get('/api/v1/templatesby-specialty'),
 
   // Get template statistics
   getStats: () =>
-    templatesApi.get('/input-templates/stats'),
+    templatesApi.get('/api/v1/templatesstats'),
 
   // Get single template
   getById: (id) =>
-    templatesApi.get(`/input-templates/${id}`),
+    templatesApi.get(`/api/v1/templates/${id}`),
 
   // Create new template
   create: (templateData) =>
-    templatesApi.post('/input-templates/', templateData),
+    templatesApi.post('/api/v1/templates', templateData),
 
   // Update template
   update: (id, templateData) =>
-    templatesApi.put(`/input-templates/${id}`, templateData),
+    templatesApi.put(`/api/v1/templates/${id}`, templateData),
 
   // Delete template
   delete: (id) =>
-    templatesApi.delete(`/input-templates/${id}`),
+    templatesApi.delete(`/api/v1/templates/${id}`),
 
   // Toggle active status
   toggle: (id) =>
-    templatesApi.patch(`/input-templates/${id}/toggle`),
+    templatesApi.patch(`/api/v1/templates/${id}/toggle`),
 
   // Duplicate template
   duplicate: (id) =>
-    templatesApi.post(`/input-templates/${id}/duplicate`),
+    templatesApi.post(`/api/v1/templates/${id}/duplicate`),
 };
 
 // Platform Features API
@@ -436,12 +436,12 @@ export const platformFeaturesAPI = {
     const params = {};
     if (tierId) params.tier_id = tierId;
     if (category) params.category = category;
-    return api.get('/platform-features/public', { params });
+    return api.get('/api/v1/features/public', { params });
   },
 
   // Get features for current user
   getMyFeatures: () =>
-    api.get('/platform-features/user/me'),
+    api.get('/api/v1/features/user'),
 };
 
 export default api;
