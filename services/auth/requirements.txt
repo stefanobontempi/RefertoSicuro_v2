@@ -2,6 +2,7 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
+gunicorn==21.2.0  # Production WSGI server
 
 # Database
 sqlalchemy==2.0.35

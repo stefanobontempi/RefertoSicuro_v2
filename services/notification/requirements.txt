@@ -1,0 +1,41 @@
+# Core Dependencies
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+gunicorn==21.2.0
+
+# Database
+sqlalchemy==2.0.35
+asyncpg==0.29.0
+alembic==1.13.2
+
+# Redis
+redis==5.0.8
+aioredis==2.0.1
+
+# Validation
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# HTTP Client
+httpx==0.27.2
+aiohttp==3.10.5
+
+# Message Queue
+aio-pika==9.4.3
+
+# Monitoring
+prometheus-client==0.20.0
+
+# Utilities
+python-dateutil==2.9.0
+pytz==2024.2
+
+# Logging
+structlog==24.4.0
+python-json-logger==2.0.7
+
+# Service-specific dependencies
+aiosmtplib==3.0.2
+jinja2==3.1.4
+twilio==9.3.4

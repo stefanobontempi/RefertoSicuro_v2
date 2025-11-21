@@ -1,0 +1,45 @@
+# Development Dockerfile for Frontend
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install || npm init -y && \
+    npm install --save-dev vite @vitejs/plugin-react \
+    react react-dom \
+    @types/react @types/react-dom \
+    typescript \
+    tailwindcss postcss autoprefixer \
+    @headlessui/react @heroicons/react \
+    axios zustand react-router-dom \
+    react-hook-form @hookform/resolvers zod
+
+# Copy application code
+COPY . .
+
+# Create vite config if it doesn't exist
+RUN if [ ! -f "vite.config.ts" ]; then \
+    echo 'import { defineConfig } from "vite";\n\
+import react from "@vitejs/plugin-react";\n\
+\n\
+export default defineConfig({\n\
+  plugins: [react()],\n\
+  server: {\n\
+    host: "0.0.0.0",\n\
+    port: 5173,\n\
+    watch: {\n\
+      usePolling: true\n\
+    }\n\
+  }\n\
+});' > vite.config.ts; \
+fi
+
+# Expose port
+EXPOSE 5173
+
+# Start development server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

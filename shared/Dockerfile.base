@@ -1,0 +1,47 @@
+# Base Dockerfile for FastAPI microservices
+# This provides common setup for all Python services
+FROM python:3.12-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    POETRY_VERSION=1.7.1 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_CREATE=false
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    curl \
+    libpq-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry (optional, can use pip if preferred)
+RUN pip install --upgrade pip setuptools wheel
+
+# Create app user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set working directory
+WORKDIR /app
+
+# Create necessary directories
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+
+# Health check script
+COPY <<EOF /usr/local/bin/health-check
+#!/bin/sh
+curl -f http://localhost:\${PORT:-8000}/health || exit 1
+EOF
+RUN chmod +x /usr/local/bin/health-check
+
+# Default healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/health-check
+
+# Switch to app user
+USER appuser
