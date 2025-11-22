@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 from app.__version__ import __build__, __build_date__, __git_commit__, __service__, __version__
+from app.core.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,12 +25,18 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     from app.core.logging import setup_logging
+    from app.core.metrics import set_app_info
     from app.services.event_consumer import get_event_consumer
     from app.workers.email_worker import get_email_worker
 
     # Setup structured logging
     setup_logging()
     logger.info("🚀 Starting Notification Service...")
+
+    # Initialize metrics
+    set_app_info(
+        version=__version__, environment=settings.ENVIRONMENT, build=__build__
+    )
 
     # Start RabbitMQ event consumer
     consumer = get_event_consumer()
@@ -140,6 +147,19 @@ async def readiness_check() -> Dict[str, Any]:
         "ready": all(checks.values()),
         "checks": checks,
     }
+
+
+@app.get("/metrics")
+async def metrics():
+    """
+    Prometheus metrics endpoint.
+
+    Returns metrics in Prometheus exposition format for scraping.
+    """
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+    from starlette.responses import Response
+
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 # Include API routers
