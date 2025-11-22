@@ -5,6 +5,7 @@ Shared fixtures for all tests
 """
 
 import asyncio
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Generator
@@ -17,6 +18,7 @@ from app.models.notification import (
     NotificationQueue,
     NotificationTemplate,
 )
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -24,6 +26,61 @@ from sqlalchemy.pool import NullPool
 TEST_DATABASE_URL = settings.DATABASE_URL.replace(
     settings.POSTGRES_DB, f"{settings.POSTGRES_DB}_test"
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_database():
+    """
+    Setup test database before all tests.
+
+    This fixture runs ONCE per test session and drops/recreates the database.
+    Uses psycopg2 directly to avoid SQLAlchemy caching issues.
+    """
+    import psycopg2
+    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+
+    db_name = f"{settings.POSTGRES_DB}_test"
+    # Use hardcoded credentials for test (same as docker-compose.dev.yml)
+    password = "dev_password"
+    user = "refertosicuro"
+    host = settings.POSTGRES_HOST
+    port = settings.POSTGRES_PORT
+
+    # Connect to postgres database to drop/create test database
+    conn = psycopg2.connect(
+        dbname="postgres",
+        user=user,
+        password=password,
+        host=host,
+        port=port
+    )
+    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+    cursor = conn.cursor()
+
+    # Terminate all connections to test database
+    cursor.execute(f"""
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = '{db_name}'
+          AND pid <> pg_backend_pid()
+    """)
+
+    # Drop and recreate
+    cursor.execute(f"DROP DATABASE IF EXISTS {db_name}")
+    cursor.execute(f"CREATE DATABASE {db_name}")
+
+    cursor.close()
+    conn.close()
+
+    yield
+
+    # Cleanup after all tests (optional - comment out to keep for debugging)
+    # conn = psycopg2.connect(dbname="postgres", user=user, password=password, host=host, port=port)
+    # conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+    # cursor = conn.cursor()
+    # cursor.execute(f"DROP DATABASE IF EXISTS {db_name}")
+    # cursor.close()
+    # conn.close()
 
 
 @pytest.fixture(scope="session")
@@ -51,9 +108,8 @@ async def test_db() -> AsyncGenerator[AsyncSession, None]:
         poolclass=NullPool,
     )
 
-    # Drop existing tables and create fresh (for test isolation)
+    # Create all tables (database was recreated by session fixture)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     # Create session factory
