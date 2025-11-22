@@ -5,14 +5,14 @@ Configuration Management with Vault Integration
 
 import os
 import sys
-from typing import List, Optional
 from functools import lru_cache
+from typing import List, Optional
 
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
 
 # Add shared utilities to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../shared'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../shared"))
 from utils.vault_client import SecureConfig
 
 
@@ -46,25 +46,31 @@ class Settings(BaseSettings):
 
     # JWT Configuration (non-sensitive)
     JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=240, env="ACCESS_TOKEN_EXPIRE_MINUTES"
+    )  # 4 hours
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, env="REFRESH_TOKEN_EXPIRE_DAYS")
-    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(default=6, env="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
-    EMAIL_VERIFICATION_TOKEN_EXPIRE_DAYS: int = Field(default=7, env="EMAIL_VERIFICATION_TOKEN_EXPIRE_DAYS")
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(
+        default=6, env="PASSWORD_RESET_TOKEN_EXPIRE_HOURS"
+    )
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_DAYS: int = Field(
+        default=7, env="EMAIL_VERIFICATION_TOKEN_EXPIRE_DAYS"
+    )
 
     # Security (non-sensitive configs)
     ALLOWED_HOSTS: List[str] = Field(
-        default=["localhost", "auth-service", "*.refertosicuro.it"],
-        env="ALLOWED_HOSTS"
+        default=["localhost", "auth-service", "*.refertosicuro.it"], env="ALLOWED_HOSTS"
     )
     CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:5173", "http://localhost:5174"],
-        env="CORS_ORIGINS"
+        default=["http://localhost:5173", "http://localhost:5174"], env="CORS_ORIGINS"
     )
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = Field(default=True, env="RATE_LIMIT_ENABLED")
     RATE_LIMIT_PER_MINUTE_ANONYMOUS: int = Field(default=10, env="RATE_LIMIT_PER_MINUTE_ANONYMOUS")
-    RATE_LIMIT_PER_MINUTE_AUTHENTICATED: int = Field(default=100, env="RATE_LIMIT_PER_MINUTE_AUTHENTICATED")
+    RATE_LIMIT_PER_MINUTE_AUTHENTICATED: int = Field(
+        default=100, env="RATE_LIMIT_PER_MINUTE_AUTHENTICATED"
+    )
 
     # Password Policy
     PASSWORD_MIN_LENGTH: int = Field(default=12, env="PASSWORD_MIN_LENGTH")
@@ -104,6 +110,16 @@ class Settings(BaseSettings):
         if self._jwt_secret is None:
             self._jwt_secret = self.vault_client.get_required("jwt_secret")
         return self._jwt_secret
+
+    @property
+    def SECRET_KEY(self) -> str:
+        """Alias for JWT_SECRET for backwards compatibility."""
+        return self.JWT_SECRET
+
+    @property
+    def ALGORITHM(self) -> str:
+        """Alias for JWT_ALGORITHM for backwards compatibility."""
+        return self.JWT_ALGORITHM
 
     @property
     def CSRF_SECRET(self) -> str:
@@ -149,7 +165,9 @@ class Settings(BaseSettings):
     def EMAIL_VERIFICATION_SECRET(self) -> str:
         """Get email verification secret from Vault."""
         if self._email_verification_secret is None:
-            self._email_verification_secret = self.vault_client.get_required("email_verification_secret")
+            self._email_verification_secret = self.vault_client.get_required(
+                "email_verification_secret"
+            )
         return self._email_verification_secret
 
     @property
@@ -203,6 +221,7 @@ class Settings(BaseSettings):
 
     class Config:
         """Pydantic configuration."""
+
         case_sensitive = True
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -228,6 +247,7 @@ if settings.ENVIRONMENT != "test":
         _ = settings.DATABASE_URL
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.error(f"Failed to load critical secrets from Vault: {e}")
         if settings.ENVIRONMENT == "production":

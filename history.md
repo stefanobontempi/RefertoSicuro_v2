@@ -4,6 +4,7 @@
 
 | Data       | Task                                    | Stato       | Note                                                                                    |
 | ---------- | --------------------------------------- | ----------- | --------------------------------------------------------------------------------------- |
+| 2025-11-22 | FASE 1 - Task 1.4 CI/CD COMPLETATO      | completed   | Pre-commit hooks + CI/CD pipeline - ENTRAMBI TESTATI E FUNZIONANTI ✅                   |
 | 2025-11-22 | FASE 1 - Task 1.4.2 Pre-commit Hooks    | completed   | .pre-commit-config.yaml + PRE-COMMIT-SETUP.md, 8 categorie hooks                        |
 | 2025-11-22 | FASE 1 - Task 1.4.1 CI/CD Base Workflow | completed   | ci-base.yml con security scan + version check                                           |
 | 2025-11-22 | FASE 1 - Task 1.2 Branching Strategy    | completed   | BRANCHING.md + GitHub protection setup guide                                            |
