@@ -6,17 +6,22 @@ Core user model with enhanced security features
 
 import uuid
 from datetime import datetime
-from typing import Optional, List
-
-from sqlalchemy import (
-    Column, String, Boolean, DateTime, Text, JSON,
-    Integer, ForeignKey, Index, CheckConstraint, UniqueConstraint
-)
-from sqlalchemy.dialects.postgresql import UUID, INET, JSONB
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import Base
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 
 class User(Base):
@@ -84,20 +89,15 @@ class User(Base):
     api_quota_override = Column(Integer)
 
     # Preferences
-    notification_preferences = Column(JSONB, default=lambda: {
-        "email": True,
-        "sms": False,
-        "push": False
-    })
-    ui_preferences = Column(JSONB, default=lambda: {
-        "theme": "light",
-        "language": "it"
-    })
+    notification_preferences = Column(
+        JSONB, default=lambda: {"email": True, "sms": False, "push": False}
+    )
+    ui_preferences = Column(JSONB, default=lambda: {"theme": "light", "language": "it"})
     preferred_language = Column(String(5), default="it")
     timezone = Column(String(50), default="Europe/Rome")
 
-    # Organization (B2B)
-    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"))
+    # Organization (B2B) - temporarily nullable, will be implemented in Phase 3
+    organization_id = Column(UUID(as_uuid=True))  # ForeignKey added later
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -106,9 +106,6 @@ class User(Base):
 
     # Relationships
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
-    consents = relationship("UserConsent", back_populates="user", cascade="all, delete-orphan")
-    audit_logs = relationship("AuditLog", back_populates="user")
-    organization = relationship("Organization", back_populates="users")
 
     # Indexes
     __table_args__ = (

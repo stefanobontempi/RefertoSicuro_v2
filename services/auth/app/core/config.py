@@ -106,7 +106,7 @@ class Settings(BaseSettings):
 
     @property
     def JWT_SECRET(self) -> str:
-        """Get JWT secret from Vault."""
+        """Get JWT secret from Vault (ALWAYS, no fallback)."""
         if self._jwt_secret is None:
             self._jwt_secret = self.vault_client.get_required("jwt_secret")
         return self._jwt_secret
@@ -123,7 +123,7 @@ class Settings(BaseSettings):
 
     @property
     def CSRF_SECRET(self) -> str:
-        """Get CSRF secret from Vault."""
+        """Get CSRF secret from Vault (ALWAYS, no fallback)."""
         if self._csrf_secret is None:
             self._csrf_secret = self.vault_client.get_required("csrf_secret")
         return self._csrf_secret

@@ -18,23 +18,25 @@ docker exec rs_vault vault secrets enable -path=secret kv-v2 2>/dev/null || echo
 # Auth Service Secrets
 echo "Configuring Auth Service secrets..."
 docker exec rs_vault vault kv put secret/auth-service \
-    DATABASE_URL="postgresql+asyncpg://auth_service:auth_dev_password@postgres:5432/auth_db" \
-    REDIS_URL="redis://redis:6379/0" \
-    JWT_SECRET="dev_jwt_secret_change_in_production_$(openssl rand -hex 32)" \
-    CSRF_SECRET="dev_csrf_secret_change_in_production_$(openssl rand -hex 32)" \
-    ACCESS_TOKEN_EXPIRE_MINUTES="15" \
-    REFRESH_TOKEN_EXPIRE_DAYS="7" \
-    EMAIL_VERIFICATION_EXPIRE_HOURS="24" \
-    PASSWORD_RESET_EXPIRE_HOURS="1" \
-    MFA_SECRET_LENGTH="32" \
-    REQUIRE_EMAIL_VERIFICATION="false" \
-    SMTP_HOST="mailhog" \
-    SMTP_PORT="1025" \
-    SMTP_USER="" \
-    SMTP_PASSWORD="" \
-    SMTP_TLS="false" \
-    EMAIL_FROM="noreply@refertosicuro.local" \
-    EMAIL_FROM_NAME="RefertoSicuro"
+    jwt_secret="dev_jwt_secret_change_in_production_$(openssl rand -hex 32)" \
+    csrf_secret="dev_csrf_secret_change_in_production_$(openssl rand -hex 32)" \
+    email_verification_secret="dev_email_verification_secret_$(openssl rand -hex 32)" \
+    password_reset_secret="dev_password_reset_secret_$(openssl rand -hex 32)"
+
+# Database Configuration (separate from secrets for clarity)
+echo "Configuring database credentials for Auth Service..."
+docker exec rs_vault vault kv put secret/database/postgres \
+    username="refertosicuro" \
+    password="dev_postgres_password_$(openssl rand -hex 16)" \
+    host="postgres" \
+    port="5432" \
+    database="refertosicuro_dev"
+
+echo "Configuring Redis credentials..."
+docker exec rs_vault vault kv put secret/database/redis \
+    host="redis" \
+    port="6379" \
+    password=""
 
 # Reports Service Secrets
 echo "Configuring Reports Service secrets..."

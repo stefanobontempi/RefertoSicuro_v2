@@ -21,17 +21,22 @@ else
     exit 1
 fi
 
+# Override user to root for initial setup
+SETUP_USER=root
+SETUP_SSH_KEY="${STAGING_SSH_KEY/#\~/$HOME}"
+
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}RefertoSicuro - Staging Server Setup${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Server: $STAGING_HOST"
-echo "User: $STAGING_USER"
+echo "Setup User: $SETUP_USER (will create: stefano)"
+echo "SSH Key: $SETUP_SSH_KEY"
 echo ""
 
 # Test SSH connection
-echo -e "${YELLOW}[1/8] Testing SSH connection...${NC}"
-ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no $STAGING_USER@$STAGING_HOST "echo 'SSH connection successful'" || {
+echo -e "${YELLOW}[1/11] Testing SSH connection...${NC}"
+ssh -i "$SETUP_SSH_KEY" -o ConnectTimeout=10 -o StrictHostKeyChecking=no $SETUP_USER@$STAGING_HOST "echo 'SSH connection successful'" || {
     echo -e "${RED}Error: Cannot connect to server${NC}"
     exit 1
 }
@@ -40,7 +45,7 @@ echo ""
 
 # Update system
 echo -e "${YELLOW}[2/11] Updating system packages...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     apt-get update
     apt-get upgrade -y
     apt-get install -y curl git vim htop sudo build-essential procps file
@@ -50,7 +55,7 @@ echo ""
 
 # Create stefano user with sudo
 echo -e "${YELLOW}[3/11] Creating user 'stefano' with sudo access...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     # Create user
     useradd -m -s /bin/bash stefano
 
@@ -79,7 +84,7 @@ echo ""
 
 # Install Homebrew for stefano
 echo -e "${YELLOW}[4/11] Installing Homebrew for stefano...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     # Install Homebrew as stefano user
     su - stefano << 'STEFANO_EOF'
         NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -97,7 +102,7 @@ echo ""
 
 # Install Claude Code
 echo -e "${YELLOW}[5/11] Installing Claude Code...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     su - stefano << 'STEFANO_EOF'
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         brew install --cask claude-code || brew install claude-code
@@ -109,7 +114,7 @@ echo ""
 
 # Install Docker
 echo -e "${YELLOW}[6/11] Installing Docker...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     # Remove old versions
     apt-get remove -y docker docker-engine docker.io containerd runc || true
 
@@ -142,7 +147,7 @@ echo ""
 
 # Configure firewall
 echo -e "${YELLOW}[7/11] Configuring firewall...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     # Install UFW
     apt-get install -y ufw
 
@@ -175,7 +180,7 @@ echo ""
 
 # Create deployment directory
 echo -e "${YELLOW}[8/11] Creating deployment directory...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << ENDSSH
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << ENDSSH
     mkdir -p $DEPLOY_PATH
     mkdir -p $DEPLOY_PATH/volumes
     mkdir -p $DEPLOY_PATH/backups
@@ -188,7 +193,7 @@ echo ""
 
 # Setup Docker networks
 echo -e "${YELLOW}[9/11] Creating Docker networks...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     docker network create refertosicuro-network || true
 ENDSSH
 echo -e "${GREEN}✓ Docker networks ready${NC}"
@@ -196,7 +201,7 @@ echo ""
 
 # Generate secrets
 echo -e "${YELLOW}[10/11] Generating staging secrets...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << ENDSSH
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << ENDSSH
     # Generate random passwords
     DB_PASSWORD=\$(openssl rand -base64 32)
     MONGO_PASSWORD=\$(openssl rand -base64 32)
@@ -221,7 +226,7 @@ echo ""
 
 # Configure swap (important for 2GB RAM server)
 echo -e "${YELLOW}[11/11] Configuring swap + SSH hardening...${NC}"
-ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+ssh -i "$SETUP_SSH_KEY" $SETUP_USER@$STAGING_HOST << 'ENDSSH'
     # Create 4GB swap file
     fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1G count=4
     chmod 600 /swapfile

@@ -49,6 +49,22 @@ RefertoSicuro_v2/
 - **Security Scan**: Verifica vulnerabilità con `trivy` e `semgrep`
 - **Versioning**: Semantic versioning (MAJOR.MINOR.PATCH) - vedi [docs/devops/VERSIONING.md](/docs/devops/VERSIONING.md)
 
+### Accesso Server Staging
+
+```bash
+# SSH to staging server (Hetzner VPS)
+ssh -i ~/Desktop/refertosicuro_staging_key root@91.99.223.25
+```
+
+**Server Details**:
+
+- **IP**: 91.99.223.25
+- **User**: root (stefano will be created by setup script)
+- **SSH Key**: `~/Desktop/refertosicuro_staging_key`
+- **Documentation**: [docs/devops/STAGING-SETUP.md](/docs/devops/STAGING-SETUP.md)
+
+**Note**: L'utente `stefano` sarà creato automaticamente dallo script `setup-staging-server.sh`
+
 ### Comandi Make Disponibili
 
 Il progetto include un Makefile completo per semplificare lo sviluppo. Usa `make help` per vedere tutti i comandi.
