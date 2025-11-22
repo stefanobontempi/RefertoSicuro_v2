@@ -8,16 +8,17 @@ VAULT_TOKEN="dev-root-token"
 
 echo "Setting up Vault secrets for development..."
 
-# Export for vault CLI
-export VAULT_ADDR=$VAULT_ADDR
-export VAULT_TOKEN=$VAULT_TOKEN
+# Helper function to execute vault commands
+vault_exec() {
+    docker exec -e VAULT_ADDR=$VAULT_ADDR -e VAULT_TOKEN=$VAULT_TOKEN rs_vault vault "$@"
+}
 
 # Enable KV v2 secrets engine
-docker exec rs_vault vault secrets enable -path=secret kv-v2 2>/dev/null || echo "KV v2 already enabled"
+vault_exec secrets enable -path=secret kv-v2 2>/dev/null || echo "KV v2 already enabled"
 
 # Auth Service Secrets
 echo "Configuring Auth Service secrets..."
-docker exec rs_vault vault kv put secret/auth-service \
+vault_exec kv put secret/auth-service \
     jwt_secret="dev_jwt_secret_change_in_production_$(openssl rand -hex 32)" \
     csrf_secret="dev_csrf_secret_change_in_production_$(openssl rand -hex 32)" \
     email_verification_secret="dev_email_verification_secret_$(openssl rand -hex 32)" \
@@ -25,7 +26,7 @@ docker exec rs_vault vault kv put secret/auth-service \
 
 # Database Configuration (separate from secrets for clarity)
 echo "Configuring database credentials for Auth Service..."
-docker exec rs_vault vault kv put secret/database/postgres \
+vault_exec kv put secret/database/postgres \
     username="refertosicuro" \
     password="dev_postgres_password_$(openssl rand -hex 16)" \
     host="postgres" \
@@ -33,14 +34,14 @@ docker exec rs_vault vault kv put secret/database/postgres \
     database="refertosicuro_dev"
 
 echo "Configuring Redis credentials..."
-docker exec rs_vault vault kv put secret/database/redis \
+vault_exec kv put secret/database/redis \
     host="redis" \
     port="6379" \
     password=""
 
 # Reports Service Secrets
 echo "Configuring Reports Service secrets..."
-docker exec rs_vault vault kv put secret/reports-service \
+vault_exec kv put secret/reports-service \
     DATABASE_URL="postgresql+asyncpg://reports_service:reports_dev_password@postgres:5432/reports_db" \
     REDIS_URL="redis://redis:6379/1" \
     MONGODB_URL="mongodb://admin:dev_password_change_me@mongodb:27017/reports?authSource=admin" \
@@ -57,7 +58,7 @@ docker exec rs_vault vault kv put secret/reports-service \
 
 # Billing Service Secrets
 echo "Configuring Billing Service secrets..."
-docker exec rs_vault vault kv put secret/billing-service \
+vault_exec kv put secret/billing-service \
     DATABASE_URL="postgresql+asyncpg://billing_service:billing_dev_password@postgres:5432/billing_db" \
     REDIS_URL="redis://redis:6379/2" \
     STRIPE_SECRET_KEY="sk_test_placeholder" \
@@ -73,7 +74,7 @@ docker exec rs_vault vault kv put secret/billing-service \
 
 # Admin Service Secrets
 echo "Configuring Admin Service secrets..."
-docker exec rs_vault vault kv put secret/admin-service \
+vault_exec kv put secret/admin-service \
     DATABASE_URL="postgresql+asyncpg://admin_service:admin_dev_password@postgres:5432/admin_db" \
     REDIS_URL="redis://redis:6379/3" \
     MONGODB_URL="mongodb://admin:dev_password_change_me@mongodb:27017/analytics?authSource=admin" \
@@ -86,7 +87,7 @@ docker exec rs_vault vault kv put secret/admin-service \
 
 # Notification Service Secrets
 echo "Configuring Notification Service secrets..."
-docker exec rs_vault vault kv put secret/notification-service \
+vault_exec kv put secret/notification-service \
     REDIS_URL="redis://redis:6379/4" \
     RABBITMQ_URL="amqp://admin:dev_password_change_me@rabbitmq:5672/refertosicuro" \
     SMTP_HOST="mailhog" \
@@ -105,7 +106,7 @@ docker exec rs_vault vault kv put secret/notification-service \
 
 # Analytics Service Secrets
 echo "Configuring Analytics Service secrets..."
-docker exec rs_vault vault kv put secret/analytics-service \
+vault_exec kv put secret/analytics-service \
     MONGODB_URL="mongodb://admin:dev_password_change_me@mongodb:27017/analytics?authSource=admin" \
     REDIS_URL="redis://redis:6379/5" \
     CLICKHOUSE_HOST="clickhouse" \
@@ -119,7 +120,7 @@ docker exec rs_vault vault kv put secret/analytics-service \
 
 # Shared Secrets (used by multiple services)
 echo "Configuring Shared secrets..."
-docker exec rs_vault vault kv put secret/shared \
+vault_exec kv put secret/shared \
     ENVIRONMENT="development" \
     LOG_LEVEL="DEBUG" \
     CORS_ORIGINS="http://localhost:3000,http://localhost:5173" \
@@ -133,7 +134,7 @@ docker exec rs_vault vault kv put secret/shared \
 
 # Kong/API Gateway Configuration
 echo "Configuring Kong secrets..."
-docker exec rs_vault vault kv put secret/kong \
+vault_exec kv put secret/kong \
     POSTGRES_HOST="kong-database" \
     POSTGRES_PORT="5432" \
     POSTGRES_USER="kong" \
@@ -148,7 +149,7 @@ docker exec rs_vault vault kv put secret/kong \
 echo "Creating Vault policies..."
 
 # Auth Service Policy
-docker exec rs_vault vault policy write auth-service - <<EOF
+vault_exec policy write auth-service - <<EOF
 path "secret/data/auth-service" {
   capabilities = ["read"]
 }
@@ -158,7 +159,7 @@ path "secret/data/shared" {
 EOF
 
 # Reports Service Policy
-docker exec rs_vault vault policy write reports-service - <<EOF
+vault_exec policy write reports-service - <<EOF
 path "secret/data/reports-service" {
   capabilities = ["read"]
 }
@@ -169,8 +170,8 @@ EOF
 
 # Create tokens for services (for production, use AppRole or other auth methods)
 echo "Creating service tokens..."
-docker exec rs_vault vault token create -policy=auth-service -ttl=720h -display-name="auth-service" | grep "token " | awk '{print "Auth Service Token: " $2}'
-docker exec rs_vault vault token create -policy=reports-service -ttl=720h -display-name="reports-service" | grep "token " | awk '{print "Reports Service Token: " $2}'
+vault_exec token create -policy=auth-service -ttl=720h -display-name="auth-service" | grep "token " | awk '{print "Auth Service Token: " $2}'
+vault_exec token create -policy=reports-service -ttl=720h -display-name="reports-service" | grep "token " | awk '{print "Reports Service Token: " $2}'
 
 echo ""
 echo "✅ Vault secrets setup complete!"

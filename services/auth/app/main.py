@@ -41,8 +41,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     logger.info("Starting Auth Service...")
 
     # Initialize Vault client
-    vault_client.initialize()
-    logger.info("Vault client initialized")
+    # Vault client auto-initialized
+    logger.info("Vault client ready")
 
     # Create database tables
     async with engine.begin() as conn:

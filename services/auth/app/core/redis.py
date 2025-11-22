@@ -63,6 +63,21 @@ class RedisClient:
             logger.error(f"Redis SET error: {e}")
             return False
 
+    async def setex(self, key: str, seconds: int, value: str) -> bool:
+        """Set value with expiration in seconds"""
+        return await self.set(key, value, expire=seconds)
+
+    async def ping(self) -> bool:
+        """Ping Redis to check connection"""
+        if not self._client:
+            await self.connect()
+        try:
+            await self._client.ping()
+            return True
+        except Exception as e:
+            logger.error(f"Redis PING error: {e}")
+            return False
+
     async def delete(self, key: str) -> bool:
         """Delete key from Redis"""
         if not self._client:

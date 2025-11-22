@@ -4,52 +4,40 @@ Authentication API Endpoints
 Core authentication endpoints for user registration, login, and token management
 """
 
-from datetime import datetime, timezone
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import secrets
 import logging
+import secrets
+from datetime import datetime, timezone
 
-from app.core.database import get_db
 from app.core.config import settings
-from app.core.security import (
-    get_password_hash,
-    verify_password,
-    generate_verification_token,
-    verify_token
-)
-from app.models.user import User
-from app.services.jwt_service import jwt_service
-from app.services.email_service import email_service
-from app.schemas.auth import (
-    UserRegister,
-    UserLogin,
-    TokenResponse,
-    EmailVerification,
-    PasswordResetRequest,
-    PasswordReset,
-    MFAEnable,
-    MFAVerify,
-    MessageResponse
-)
-from app.utils.validators import validate_password_strength
+from app.core.database import get_db
 from app.core.rate_limit import rate_limit
 from app.core.redis import redis_client
+from app.core.security import generate_verification_token, get_password_hash, verify_password
+from app.models.user import Session, User
+from app.schemas.auth import (
+    EmailVerification,
+    MessageResponse,
+    MFAVerify,
+    PasswordReset,
+    PasswordResetRequest,
+    TokenResponse,
+    UserRegister,
+)
+from app.services.email_service import email_service
+from app.services.jwt_service import jwt_service
+from app.utils.validators import validate_password_strength
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
-@rate_limit(max_calls=5, time_window=3600)  # 5 registrations per hour
-async def register(
-    user_data: UserRegister,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
+@rate_limit("5/hour")  # 5 registrations per hour
+async def register(user_data: UserRegister, request: Request, db: AsyncSession = Depends(get_db)):
     """
     Register a new user account.
 
@@ -59,21 +47,15 @@ async def register(
     - Creates initial session
     """
     # Check if email already exists
-    result = await db.execute(
-        select(User).where(User.email == user_data.email.lower())
-    )
+    result = await db.execute(select(User).where(User.email == user_data.email.lower()))
     if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered"
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     # Validate password strength
     password_errors = validate_password_strength(user_data.password)
     if password_errors:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"password_errors": password_errors}
+            status_code=status.HTTP_400_BAD_REQUEST, detail={"password_errors": password_errors}
         )
 
     # Create user
@@ -85,11 +67,8 @@ async def register(
         phone_number=user_data.phone_number,
         tax_code=user_data.tax_code,
         preferred_language=user_data.preferred_language or "it",
-        notification_preferences=user_data.notification_preferences or {
-            "email": True,
-            "sms": False,
-            "push": False
-        }
+        notification_preferences=user_data.notification_preferences
+        or {"email": True, "sms": False, "push": False},
     )
 
     db.add(user)
@@ -98,33 +77,29 @@ async def register(
 
     # Send verification email
     verification_token = generate_verification_token()
-    await redis_client.setex(
-        f"email_verify:{verification_token}",
-        86400,  # 24 hours
-        str(user.id)
-    )
+    await redis_client.setex(f"email_verify:{verification_token}", 86400, str(user.id))  # 24 hours
 
     await email_service.send_verification_email(
         email=user.email,
         name=user.full_name,
         token=verification_token,
-        language=user.preferred_language
+        language=user.preferred_language,
     )
 
     logger.info(f"New user registered: {user.email}")
 
     return MessageResponse(
         message="Registration successful. Please check your email to verify your account.",
-        success=True
+        success=True,
     )
 
 
 @router.post("/login", response_model=TokenResponse)
-@rate_limit(max_calls=10, time_window=300)  # 10 attempts per 5 minutes
+@rate_limit("10/5minutes")  # 10 attempts per 5 minutes
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     request: Request = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Login with email and password.
@@ -135,32 +110,24 @@ async def login(
     - Records session
     """
     # Get user
-    result = await db.execute(
-        select(User).where(User.email == form_data.username.lower())
-    )
+    result = await db.execute(select(User).where(User.email == form_data.username.lower()))
     user = result.scalar_one_or_none()
 
     if not user:
         # Log failed attempt for security monitoring
         logger.warning(f"Login attempt for non-existent user: {form_data.username}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     # Check if account is locked
     if user.is_locked:
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
-            detail="Account is locked due to multiple failed login attempts"
+            detail="Account is locked due to multiple failed login attempts",
         )
 
     # Check if account is active
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is not active"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active")
 
     # Verify password
     if not verify_password(form_data.password, user.password_hash):
@@ -176,16 +143,13 @@ async def login(
 
         await db.commit()
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     # Check if email is verified (optional based on settings)
     if settings.REQUIRE_EMAIL_VERIFICATION and not user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email before logging in"
+            detail="Please verify your email before logging in",
         )
 
     # Reset failed login count on successful login
@@ -199,7 +163,7 @@ async def login(
         db=db,
         ip_address=request.client.host if request else "unknown",
         user_agent=request.headers.get("User-Agent"),
-        device_id=request.headers.get("X-Device-Id")
+        device_id=request.headers.get("X-Device-Id"),
     )
 
     await db.commit()
@@ -213,7 +177,7 @@ async def login(
 async def logout(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(jwt_service.get_current_user)
+    current_user: User = Depends(jwt_service.get_current_user),
 ):
     """
     Logout current session.
@@ -226,8 +190,7 @@ async def logout(
     authorization = request.headers.get("Authorization")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header"
         )
 
     token = authorization.replace("Bearer ", "")
@@ -235,18 +198,12 @@ async def logout(
     # Decode token to get JTI
     payload = await jwt_service.validate_access_token(token)
     if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     # Find and revoke session
     jti = payload.get("jti")
     result = await db.execute(
-        select(Session).where(
-            Session.access_token_jti == jti,
-            Session.user_id == current_user.id
-        )
+        select(Session).where(Session.access_token_jti == jti, Session.user_id == current_user.id)
     )
     session = result.scalar_one_or_none()
 
@@ -255,18 +212,11 @@ async def logout(
 
     logger.info(f"User logged out: {current_user.email}")
 
-    return MessageResponse(
-        message="Logged out successfully",
-        success=True
-    )
+    return MessageResponse(message="Logged out successfully", success=True)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(
-    refresh_token: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
+async def refresh_token(refresh_token: str, request: Request, db: AsyncSession = Depends(get_db)):
     """
     Refresh access token using refresh token.
 
@@ -278,23 +228,19 @@ async def refresh_token(
         refresh_token=refresh_token,
         db=db,
         ip_address=request.client.host if request else "unknown",
-        user_agent=request.headers.get("User-Agent")
+        user_agent=request.headers.get("User-Agent"),
     )
 
     if not tokens:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
 
     return TokenResponse(**tokens)
 
 
 @router.post("/verify-email", response_model=MessageResponse)
-async def verify_email(
-    data: EmailVerification,
-    db: AsyncSession = Depends(get_db)
-):
+async def verify_email(data: EmailVerification, db: AsyncSession = Depends(get_db)):
     """
     Verify email address with token.
 
@@ -307,21 +253,15 @@ async def verify_email(
 
     if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification token"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token"
         )
 
     # Get user
-    result = await db.execute(
-        select(User).where(User.id == user_id)
-    )
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Update verification status
     user.email_verified = True
@@ -333,17 +273,13 @@ async def verify_email(
 
     logger.info(f"Email verified for user: {user.email}")
 
-    return MessageResponse(
-        message="Email verified successfully",
-        success=True
-    )
+    return MessageResponse(message="Email verified successfully", success=True)
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
-@rate_limit(max_calls=3, time_window=3600)  # 3 requests per hour
+@rate_limit("3/hour")  # 3 requests per hour
 async def forgot_password(
-    data: PasswordResetRequest,
-    db: AsyncSession = Depends(get_db)
+    data: PasswordResetRequest, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """
     Request password reset.
@@ -353,48 +289,32 @@ async def forgot_password(
     - Sends reset email
     """
     # Get user
-    result = await db.execute(
-        select(User).where(User.email == data.email.lower())
-    )
+    result = await db.execute(select(User).where(User.email == data.email.lower()))
     user = result.scalar_one_or_none()
 
     # Always return success even if user doesn't exist (security)
     if not user:
         logger.warning(f"Password reset requested for non-existent email: {data.email}")
         return MessageResponse(
-            message="If the email exists, a reset link has been sent",
-            success=True
+            message="If the email exists, a reset link has been sent", success=True
         )
 
     # Generate reset token
     reset_token = generate_verification_token()
-    await redis_client.setex(
-        f"password_reset:{reset_token}",
-        3600,  # 1 hour
-        str(user.id)
-    )
+    await redis_client.setex(f"password_reset:{reset_token}", 3600, str(user.id))  # 1 hour
 
     # Send reset email
     await email_service.send_password_reset_email(
-        email=user.email,
-        name=user.full_name,
-        token=reset_token,
-        language=user.preferred_language
+        email=user.email, name=user.full_name, token=reset_token, language=user.preferred_language
     )
 
     logger.info(f"Password reset requested for: {user.email}")
 
-    return MessageResponse(
-        message="If the email exists, a reset link has been sent",
-        success=True
-    )
+    return MessageResponse(message="If the email exists, a reset link has been sent", success=True)
 
 
 @router.post("/reset-password", response_model=MessageResponse)
-async def reset_password(
-    data: PasswordReset,
-    db: AsyncSession = Depends(get_db)
-):
+async def reset_password(data: PasswordReset, db: AsyncSession = Depends(get_db)):
     """
     Reset password with token.
 
@@ -407,29 +327,22 @@ async def reset_password(
 
     if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token"
         )
 
     # Validate new password
     password_errors = validate_password_strength(data.new_password)
     if password_errors:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"password_errors": password_errors}
+            status_code=status.HTTP_400_BAD_REQUEST, detail={"password_errors": password_errors}
         )
 
     # Get user
-    result = await db.execute(
-        select(User).where(User.id == user_id)
-    )
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Update password
     user.password_hash = get_password_hash(data.new_password)
@@ -445,16 +358,12 @@ async def reset_password(
 
     logger.info(f"Password reset completed for: {user.email}")
 
-    return MessageResponse(
-        message="Password reset successfully",
-        success=True
-    )
+    return MessageResponse(message="Password reset successfully", success=True)
 
 
 @router.post("/mfa/enable", response_model=dict)
 async def enable_mfa(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(jwt_service.get_current_user)
+    db: AsyncSession = Depends(get_db), current_user: User = Depends(jwt_service.get_current_user)
 ):
     """
     Enable two-factor authentication.
@@ -464,12 +373,12 @@ async def enable_mfa(
     """
     if current_user.mfa_enabled:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="MFA is already enabled"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="MFA is already enabled"
         )
 
     # Generate TOTP secret
     import pyotp
+
     secret = pyotp.random_base32()
 
     # Generate backup codes
@@ -479,23 +388,19 @@ async def enable_mfa(
     await redis_client.setex(
         f"mfa_setup:{current_user.id}",
         600,  # 10 minutes
-        {
-            "secret": secret,
-            "backup_codes": backup_codes
-        }
+        {"secret": secret, "backup_codes": backup_codes},
     )
 
     # Generate QR code URL
     totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
-        name=current_user.email,
-        issuer_name="RefertoSicuro"
+        name=current_user.email, issuer_name="RefertoSicuro"
     )
 
     return {
         "secret": secret,
         "qr_code": totp_uri,
         "backup_codes": backup_codes,
-        "message": "Please scan the QR code and verify with a code to complete setup"
+        "message": "Please scan the QR code and verify with a code to complete setup",
     }
 
 
@@ -503,7 +408,7 @@ async def enable_mfa(
 async def verify_mfa(
     data: MFAVerify,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(jwt_service.get_current_user)
+    current_user: User = Depends(jwt_service.get_current_user),
 ):
     """
     Verify MFA code to complete setup or login.
@@ -522,8 +427,7 @@ async def verify_mfa(
         totp = pyotp.TOTP(setup_data["secret"])
         if not totp.verify(data.code, valid_window=1):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid verification code"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification code"
             )
 
         # Enable MFA
@@ -539,8 +443,7 @@ async def verify_mfa(
         logger.info(f"MFA enabled for user: {current_user.email}")
 
         return MessageResponse(
-            message="Two-factor authentication enabled successfully",
-            success=True
+            message="Two-factor authentication enabled successfully", success=True
         )
 
     else:
@@ -548,17 +451,14 @@ async def verify_mfa(
         if not current_user.mfa_enabled:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="MFA is not enabled for this account"
+                detail="MFA is not enabled for this account",
             )
 
         totp = pyotp.TOTP(current_user.mfa_secret)
 
         # Try TOTP code first
         if totp.verify(data.code, valid_window=1):
-            return MessageResponse(
-                message="MFA verification successful",
-                success=True
-            )
+            return MessageResponse(message="MFA verification successful", success=True)
 
         # Try backup codes
         for hashed_code in current_user.mfa_backup_codes or []:
@@ -570,11 +470,9 @@ async def verify_mfa(
                 logger.info(f"Backup code used for MFA: {current_user.email}")
 
                 return MessageResponse(
-                    message="MFA verification successful (backup code used)",
-                    success=True
+                    message="MFA verification successful (backup code used)", success=True
                 )
 
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid verification code"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification code"
         )

@@ -4,20 +4,25 @@ JWT Service with Refresh Tokens
 Secure JWT implementation with refresh tokens and CSRF protection
 """
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, Tuple
-
-from jose import jwt, JWTError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from typing import Any, Dict, Optional
 
 from app.core.config import settings
-from app.models.user import User, Session
+from app.core.database import get_db
 from app.core.redis import redis_client
-import logging
+from app.models.user import Session, User
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+# HTTP Bearer security scheme
+security = HTTPBearer()
 
 
 class JWTService:
@@ -79,16 +84,8 @@ class JWTService:
         }
 
         # Encode tokens
-        access_token = jwt.encode(
-            access_payload,
-            settings.JWT_SECRET,
-            algorithm=self.algorithm
-        )
-        refresh_token = jwt.encode(
-            refresh_payload,
-            settings.JWT_SECRET,
-            algorithm=self.algorithm
-        )
+        access_token = jwt.encode(access_payload, settings.JWT_SECRET, algorithm=self.algorithm)
+        refresh_token = jwt.encode(refresh_payload, settings.JWT_SECRET, algorithm=self.algorithm)
 
         # Store session in database
         session = Session(
@@ -109,12 +106,12 @@ class JWTService:
         await redis_client.setex(
             f"session:access:{access_jti}",
             int(self.access_token_expire.total_seconds()),
-            str(user.id)
+            str(user.id),
         )
         await redis_client.setex(
             f"session:refresh:{refresh_jti}",
             int(self.refresh_token_expire.total_seconds()),
-            str(user.id)
+            str(user.id),
         )
 
         return {
@@ -146,11 +143,7 @@ class JWTService:
         """
         try:
             # Decode refresh token
-            payload = jwt.decode(
-                refresh_token,
-                settings.JWT_SECRET,
-                algorithms=[self.algorithm]
-            )
+            payload = jwt.decode(refresh_token, settings.JWT_SECRET, algorithms=[self.algorithm])
 
             # Validate token type
             if payload.get("type") != "refresh":
@@ -168,10 +161,7 @@ class JWTService:
 
             # Get session from database
             result = await db.execute(
-                select(Session).where(
-                    Session.refresh_token_jti == refresh_jti,
-                    Session.is_active == True
-                )
+                select(Session).where(Session.refresh_token_jti == refresh_jti, Session.is_active)
             )
             session = result.scalar_one_or_none()
 
@@ -180,9 +170,7 @@ class JWTService:
                 return None
 
             # Get user
-            result = await db.execute(
-                select(User).where(User.id == user_id)
-            )
+            result = await db.execute(select(User).where(User.id == user_id))
             user = result.scalar_one_or_none()
 
             if not user or not user.is_active:
@@ -214,11 +202,7 @@ class JWTService:
         """
         try:
             # Decode token
-            payload = jwt.decode(
-                token,
-                settings.JWT_SECRET,
-                algorithms=[self.algorithm]
-            )
+            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[self.algorithm])
 
             # Validate token type
             if payload.get("type") != "access":
@@ -238,10 +222,7 @@ class JWTService:
             return None
 
     async def revoke_session(
-        self,
-        session_id: uuid.UUID,
-        db: AsyncSession,
-        reason: str = "user_logout"
+        self, session_id: uuid.UUID, db: AsyncSession, reason: str = "user_logout"
     ) -> bool:
         """
         Revoke a session and its tokens.
@@ -256,9 +237,7 @@ class JWTService:
         """
         try:
             # Get session
-            result = await db.execute(
-                select(Session).where(Session.id == session_id)
-            )
+            result = await db.execute(select(Session).where(Session.id == session_id))
             session = result.scalar_one_or_none()
 
             if not session:
@@ -277,14 +256,10 @@ class JWTService:
             # Add to blacklist (for extra security)
             blacklist_ttl = int(self.refresh_token_expire.total_seconds())
             await redis_client.setex(
-                f"blacklist:access:{session.access_token_jti}",
-                blacklist_ttl,
-                "revoked"
+                f"blacklist:access:{session.access_token_jti}", blacklist_ttl, "revoked"
             )
             await redis_client.setex(
-                f"blacklist:refresh:{session.refresh_token_jti}",
-                blacklist_ttl,
-                "revoked"
+                f"blacklist:refresh:{session.refresh_token_jti}", blacklist_ttl, "revoked"
             )
 
             return True
@@ -294,10 +269,7 @@ class JWTService:
             return False
 
     async def revoke_all_user_sessions(
-        self,
-        user_id: uuid.UUID,
-        db: AsyncSession,
-        reason: str = "security"
+        self, user_id: uuid.UUID, db: AsyncSession, reason: str = "security"
     ) -> int:
         """
         Revoke all sessions for a user.
@@ -313,10 +285,7 @@ class JWTService:
         try:
             # Get all active sessions
             result = await db.execute(
-                select(Session).where(
-                    Session.user_id == user_id,
-                    Session.is_active == True
-                )
+                select(Session).where(Session.user_id == user_id, Session.is_active)
             )
             sessions = result.scalars().all()
 
@@ -347,11 +316,7 @@ class JWTService:
             "exp": datetime.now(timezone.utc) + timedelta(hours=1),
             "type": "csrf",
         }
-        return jwt.encode(
-            csrf_payload,
-            settings.CSRF_SECRET,
-            algorithm=self.algorithm
-        )
+        return jwt.encode(csrf_payload, settings.CSRF_SECRET, algorithm=self.algorithm)
 
     async def validate_csrf_token(self, token: str, user_id: str) -> bool:
         """
@@ -365,17 +330,59 @@ class JWTService:
             Validation status
         """
         try:
-            payload = jwt.decode(
-                token,
-                settings.CSRF_SECRET,
-                algorithms=[self.algorithm]
-            )
-            return (
-                payload.get("type") == "csrf" and
-                payload.get("sub") == user_id
-            )
+            payload = jwt.decode(token, settings.CSRF_SECRET, algorithms=[self.algorithm])
+            return payload.get("type") == "csrf" and payload.get("sub") == user_id
         except JWTError:
             return False
+
+    async def get_current_user(
+        self,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
+        """
+        FastAPI dependency to get current user from JWT token.
+
+        Args:
+            credentials: HTTP Bearer credentials
+            db: Database session
+
+        Returns:
+            Current user object
+
+        Raises:
+            HTTPException: If token is invalid or user not found
+        """
+        token = credentials.credentials
+
+        # Validate token
+        payload = await self.validate_access_token(token)
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user_id = payload.get("sub")
+
+        # Get user from database
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive",
+            )
+
+        return user
 
     def _get_device_name(self, user_agent: Optional[str]) -> Optional[str]:
         """
