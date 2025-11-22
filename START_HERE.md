@@ -18,15 +18,15 @@ Questo progetto è pronto per lo sviluppo parallelo orchestrato di 7 microserviz
 
 Ogni servizio ha un documento `DEVELOPMENT.md` dettagliato:
 
-| Servizio             | Path                                                                             | Status             | Coverage | Priority    |
-| -------------------- | -------------------------------------------------------------------------------- | ------------------ | -------- | ----------- |
-| Auth Service         | [`services/auth/DEVELOPMENT.md`](./services/auth/DEVELOPMENT.md)                 | ✅ Operational     | 54%      | 🔴 CRITICAL |
-| Notification Service | [`services/notification/DEVELOPMENT.md`](./services/notification/DEVELOPMENT.md) | ⚠️ Auth Flow Ready | ~90%     | 🟠 HIGH     |
-| Billing Service      | [`services/billing/DEVELOPMENT.md`](./services/billing/DEVELOPMENT.md)           | ⚠️ Skeleton        | -        | 🟠 HIGH     |
-| Reports Service      | [`services/reports/DEVELOPMENT.md`](./services/reports/DEVELOPMENT.md)           | ⚠️ Skeleton        | -        | 🟠 HIGH     |
-| Audit Service        | [`services/audit/DEVELOPMENT.md`](./services/audit/DEVELOPMENT.md)               | ❌ Missing         | -        | 🔴 CRITICAL |
-| Analytics Service    | [`services/analytics/DEVELOPMENT.md`](./services/analytics/DEVELOPMENT.md)       | ⚠️ Skeleton        | -        | 🟡 MEDIUM   |
-| Admin Service        | [`services/admin/DEVELOPMENT.md`](./services/admin/DEVELOPMENT.md)               | ⚠️ Skeleton        | -        | 🟢 LOW      |
+| Servizio             | Path                                                                             | Status                     | Coverage | Priority    | Notes                                |
+| -------------------- | -------------------------------------------------------------------------------- | -------------------------- | -------- | ----------- | ------------------------------------ |
+| Auth Service         | [`services/auth/DEVELOPMENT.md`](./services/auth/DEVELOPMENT.md)                 | ✅ **Operational**         | 54%      | 🔴 CRITICAL | JWT, 2FA, events working             |
+| Notification Service | [`services/notification/DEVELOPMENT.md`](./services/notification/DEVELOPMENT.md) | ✅ **86% Complete**        | ~90%     | 🟠 HIGH     | Email worker active, Phase 6 done    |
+| Billing Service      | [`services/billing/DEVELOPMENT.md`](./services/billing/DEVELOPMENT.md)           | ⚠️ Skeleton                | -        | 🟠 HIGH     | Blocks Notification Phase 7          |
+| Reports Service      | [`services/reports/DEVELOPMENT.md`](./services/reports/DEVELOPMENT.md)           | ⚠️ Skeleton                | -        | 🟠 HIGH     | Core business logic                  |
+| Audit Service        | [`services/audit/DEVELOPMENT.md`](./services/audit/DEVELOPMENT.md)               | ❌ Missing                 | -        | 🔴 CRITICAL | Compliance required                  |
+| Analytics Service    | [`services/analytics/DEVELOPMENT.md`](./services/analytics/DEVELOPMENT.md)       | ⚠️ Skeleton                | -        | 🟡 MEDIUM   | MongoDB time-series                  |
+| Admin Service        | [`services/admin/DEVELOPMENT.md`](./services/admin/DEVELOPMENT.md)               | ⚠️ Skeleton                | -        | 🟢 LOW      | Dashboard, reports                   |
 
 ## 🎯 Quick Start per Nuova Sessione
 
@@ -168,24 +168,30 @@ docker-compose -f docker-compose.dev.yml down
   - Event service tests (+5%)
   - Startup tests (+5%)
 
-### Phase 2: Billing + Notifications (4-5 giorni) 🟠 HIGH PRIORITY
+### Phase 2: Billing + Notifications (4-5 giorni) ✅ NOTIFICATION 86% | ⚠️ BILLING PENDING
 
 - **Agents**: 2 (paralleli)
 - **Dependencies**: Auth complete ✅
-- **Status**: 🟡 Notification Auth Flow Complete | ⚠️ Billing Ready to Start
+- **Status**: ✅ **Notification 86% Complete (Phase 1-6)** | ⚠️ Billing Ready to Start
 - **Deliverables**:
-  - **Notification Service**: ✅ **AUTH FLOW COMPLETE** (Phase 1-5, 20 hours)
+  - **Notification Service**: ✅ **86% COMPLETE** (Phase 1-6, 25/29 hours) 🎉
     - ✅ RabbitMQ consumer for 7 Auth events
     - ✅ Email service with SMTP (MailHog dev, SendGrid prod)
     - ✅ 5 Auth email templates (welcome, password_reset, etc.)
-    - ✅ 38 tests written (~90% coverage expected)
+    - ✅ **Email Worker** (Phase 6) - **AUTO QUEUE PROCESSING** ⭐ **NEW**
+      - Background worker runs every 10 seconds
+      - Batch processing (100 emails/iteration)
+      - Priority ordering, exponential backoff retry
+      - Graceful shutdown
+    - ✅ 51 tests written (38 previous + 13 worker tests)
     - ✅ 7 API endpoints (notifications + templates CRUD)
-    - ⏳ **NEXT**: Email worker for auto-processing queue (5h)
-    - ⏸️ **BLOCKED**: Billing templates (waiting for Billing Service)
-  - **Billing Service**: ⚠️ Ready to start
+    - ⏳ **NEXT**: Phase 8 - Performance & Monitoring (4h)
+    - ⏸️ **BLOCKED**: Phase 7 - Billing templates (waiting for Billing Service)
+  - **Billing Service**: ⚠️ Ready to start (2-3 weeks)
     - Stripe/PayPal integration, subscription management, quota tracking
+    - **IMPORTANT**: Unblocks Notification Phase 7 after completion
 
-**See** [`services/notification/NOTIFICATION_SERVICE_STATUS.md`](./services/notification/NOTIFICATION_SERVICE_STATUS.md) **for details**
+**See** [`services/notification/NOTIFICATION_SERVICE_STATUS.md`](./services/notification/NOTIFICATION_SERVICE_STATUS.md) **for full details**
 
 ### Phase 3: Reports + Analytics (4-5 giorni) 🟠 HIGH
 
