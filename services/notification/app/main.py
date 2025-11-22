@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 from app.__version__ import __build__, __build_date__, __git_commit__, __service__, __version__
+from app.api.v1 import notifications, templates
 from app.core.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,7 +26,7 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     from app.core.logging import setup_logging
-    from app.core.metrics import set_app_info
+    from app.core.metrics import initialize_metrics, set_app_info
     from app.services.event_consumer import get_event_consumer
     from app.workers.email_worker import get_email_worker
 
@@ -34,9 +35,9 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting Notification Service...")
 
     # Initialize metrics
-    set_app_info(
-        version=__version__, environment=settings.ENVIRONMENT, build=__build__
-    )
+    set_app_info(version=__version__, environment=settings.ENVIRONMENT, build=__build__)
+    initialize_metrics()
+    logger.info("   ✅ Metrics initialized")
 
     # Start RabbitMQ event consumer
     consumer = get_event_consumer()
@@ -163,13 +164,48 @@ async def metrics():
 
 
 # Include API routers
-from app.api.v1 import notifications, templates
-
 app.include_router(notifications.router)
 app.include_router(templates.router)
 
 
 # Service-specific endpoints
+
+
+@app.post("/debug/update-metrics")
+async def debug_update_metrics():
+    """
+    DEBUG endpoint to manually update metrics from database.
+
+    This endpoint queries the database and updates Prometheus metrics.
+    Use only for testing/debugging.
+    """
+    from app.core.database import AsyncSessionLocal
+    from app.core.metrics import update_queue_sizes
+    from app.models.notification import NotificationQueue
+    from sqlalchemy import func, select
+
+    async with AsyncSessionLocal() as db:
+        # Count emails by status
+        stmt = select(NotificationQueue.status, func.count(NotificationQueue.id)).group_by(
+            NotificationQueue.status
+        )
+
+        result = await db.execute(stmt)
+        status_counts = dict(result.all())
+
+        # Update metrics
+        pending = status_counts.get("pending", 0)
+        retry = status_counts.get("retry", 0)
+        failed = status_counts.get("failed", 0)
+
+        update_queue_sizes(pending=pending, retry=retry, failed=failed)
+
+        return {
+            "status": "ok",
+            "metrics_updated": {"pending": pending, "retry": retry, "failed": failed},
+        }
+
+
 @app.get("/api/v1/notification/status")
 async def service_status() -> Dict[str, Any]:
     """Get service status and metrics."""

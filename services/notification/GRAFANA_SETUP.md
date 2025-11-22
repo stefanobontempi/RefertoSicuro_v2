@@ -11,19 +11,23 @@ docker-compose -f docker-compose.dev.yml up -d grafana prometheus
 
 ### 2. Access Grafana UI
 
-- **URL**: http://localhost:3000
+- **URL**: <http://localhost:3000>
 - **Username**: `admin`
 - **Password**: `grafana_password` (from docker-compose.dev.yml)
 
 ### 3. Import Notification Service Dashboard
 
-1. Login to Grafana (http://localhost:3000)
+**⚠️ IMPORTANT**: Set time range to **"Last 15 minutes"** after import to see data!
+
+1. Login to Grafana (<http://localhost:3000>)
 2. Click on the **+ icon** in the left sidebar
 3. Select **"Import dashboard"**
 4. Click **"Upload JSON file"**
 5. Select: `services/notification/grafana/notification-dashboard.json`
 6. Select **Prometheus** as the datasource
 7. Click **"Import"**
+8. **Set time range**: Click time picker (top right) → Select **"Last 15 minutes"**
+9. **Enable auto-refresh**: Click refresh dropdown → Select **"10s"**
 
 ## Dashboard Overview
 
@@ -53,7 +57,7 @@ The dashboard includes 2 pre-configured alerts:
 
 ### Current Setup
 
-Prometheus is running on http://localhost:9090
+Prometheus is running on <http://localhost:9090>
 
 ### Configure Scraping for Notification Service
 
@@ -67,13 +71,14 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'notification-service'
+  - job_name: "notification-service"
     static_configs:
-      - targets: ['notification-service:8015']
-    metrics_path: '/metrics'
+      - targets: ["notification-service:8015"]
+    metrics_path: "/metrics"
 ```
 
 **Reload Prometheus**:
+
 ```bash
 docker-compose -f docker-compose.dev.yml restart prometheus
 ```
@@ -87,7 +92,7 @@ cd services/notification
 uvicorn app.main:app --host 0.0.0.0 --port 8015 --reload
 ```
 
-Once running, metrics will be available at: http://localhost:8015/metrics
+Once running, metrics will be available at: <http://localhost:8015/metrics>
 
 ## Verifying Metrics
 
@@ -98,6 +103,7 @@ curl http://localhost:8015/metrics
 ```
 
 You should see Prometheus-format metrics like:
+
 ```
 # HELP notification_emails_sent_total Total number of emails sent
 # TYPE notification_emails_sent_total counter
@@ -107,7 +113,7 @@ notification_emails_sent_total{template="welcome",status="sent"} 42.0
 
 ### Check Prometheus Targets
 
-1. Go to http://localhost:9090/targets
+1. Go to <http://localhost:9090/targets>
 2. Verify `notification-service` target is **UP**
 3. If DOWN, check Prometheus configuration and network connectivity
 
@@ -142,26 +148,29 @@ curl http://localhost:8015/metrics
 ### Dashboard shows "No Data"
 
 1. ✅ Notification Service is running
-2. ✅ Prometheus is scraping (check http://localhost:9090/targets)
-3. ✅ Metrics endpoint returns data (curl http://localhost:8015/metrics)
+2. ✅ Prometheus is scraping (check <http://localhost:9090/targets>)
+3. ✅ Metrics endpoint returns data (curl <http://localhost:8015/metrics>)
 4. ✅ Time range in Grafana is set correctly (try "Last 5 minutes")
 5. ✅ Data source in dashboard is set to "Prometheus"
 
 ## Useful Queries
 
-You can run these directly in Prometheus (http://localhost:9090) or Grafana:
+You can run these directly in Prometheus (<http://localhost:9090>) or Grafana:
 
 ### Email Throughput
+
 ```promql
 rate(notification_emails_sent_total[5m])
 ```
 
 ### Queue Depth
+
 ```promql
 notification_queue_size
 ```
 
 ### Success Rate
+
 ```promql
 sum(rate(notification_emails_sent_total{status="sent"}[5m]))
 /
@@ -169,6 +178,7 @@ sum(rate(notification_emails_sent_total[5m])) * 100
 ```
 
 ### p95 Latency
+
 ```promql
 histogram_quantile(0.95, rate(notification_email_delivery_seconds_bucket[5m]))
 ```

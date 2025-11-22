@@ -5,7 +5,7 @@ Pydantic models for email request/response validation
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, validator
@@ -35,7 +35,7 @@ class SendEmailRequest(BaseModel):
 
     recipient: EmailStr = Field(..., description="Recipient email address")
     template_name: str = Field(..., description="Template name (without extension)")
-    variables: Dict[str, any] = Field(default_factory=dict, description="Template variables")
+    variables: Dict[str, Any] = Field(default_factory=dict, description="Template variables")
     priority: int = Field(default=5, ge=1, le=10, description="Email priority (1=high, 10=low)")
     scheduled_at: Optional[datetime] = Field(None, description="Schedule email for later")
     correlation_id: Optional[UUID] = Field(None, description="Correlation ID for tracing")

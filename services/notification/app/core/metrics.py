@@ -246,3 +246,38 @@ def update_queue_sizes(pending: int, retry: int, failed: int) -> None:
     queue_size.labels(status="pending").set(pending)
     queue_size.labels(status="retry").set(retry)
     queue_size.labels(status="failed").set(failed)
+
+
+def initialize_metrics() -> None:
+    """
+    Initialize all metrics with default values to ensure they are exported.
+
+    This function should be called at application startup to register
+    all metrics with the Prometheus client, even if they have no data yet.
+    """
+    # Initialize counters (set to 0 implicitly by accessing labels)
+    emails_sent_total.labels(template="", status="sent").inc(0)
+    emails_queued_total.labels(template="", source="api").inc(0)
+    email_retry_total.labels(template="", attempt="1").inc(0)
+    smtp_errors_total.labels(error_type="connection").inc(0)
+    rabbitmq_messages_consumed.labels(event_type="", status="success").inc(0)
+    rabbitmq_connection_errors.inc(0)
+    template_rendering_errors.labels(template="", error_type="").inc(0)
+    database_connection_errors.inc(0)
+    worker_errors_total.labels(error_type="").inc(0)
+
+    # Initialize gauges
+    queue_size.labels(status="pending").set(0)
+    queue_size.labels(status="retry").set(0)
+    queue_size.labels(status="failed").set(0)
+    smtp_connection_pool.set(0)
+
+    # Initialize histograms (observe 0 to create buckets)
+    email_delivery_duration.labels(template="").observe(0)
+    template_rendering_duration.labels(template="").observe(0)
+    smtp_send_duration.observe(0)
+    queue_processing_duration.observe(0)
+    rabbitmq_message_processing_duration.labels(event_type="").observe(0)
+    database_query_duration.labels(operation="").observe(0)
+    worker_batch_size.observe(0)
+    worker_idle_duration.observe(0)

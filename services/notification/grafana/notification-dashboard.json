@@ -1,14 +1,10 @@
 {
   "title": "Notification Service Dashboard",
-  "tags": [
-    "notification",
-    "email",
-    "monitoring"
-  ],
+  "tags": ["notification", "email", "monitoring"],
   "timezone": "browser",
   "schemaVersion": 16,
   "version": 1,
-  "refresh": "30s",
+  "refresh": "10s",
   "panels": [
     {
       "id": 1,
@@ -24,7 +20,11 @@
         {
           "expr": "rate(notification_emails_sent_total[5m])",
           "legendFormat": "{{template}} - {{status}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -51,7 +51,11 @@
         {
           "expr": "notification_queue_size",
           "legendFormat": "{{status}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -78,12 +82,20 @@
         {
           "expr": "histogram_quantile(0.95, rate(notification_email_delivery_seconds_bucket[5m]))",
           "legendFormat": "{{template}} - p95",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         },
         {
           "expr": "histogram_quantile(0.99, rate(notification_email_delivery_seconds_bucket[5m]))",
           "legendFormat": "{{template}} - p99",
-          "refId": "B"
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -99,20 +111,14 @@
         "conditions": [
           {
             "evaluator": {
-              "params": [
-                0.5
-              ],
+              "params": [0.5],
               "type": "gt"
             },
             "operator": {
               "type": "and"
             },
             "query": {
-              "params": [
-                "A",
-                "5m",
-                "now"
-              ]
+              "params": ["A", "5m", "now"]
             },
             "reducer": {
               "params": [],
@@ -143,7 +149,11 @@
         {
           "expr": "rate(notification_smtp_errors_total[5m])",
           "legendFormat": "{{error_type}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -170,7 +180,11 @@
         {
           "expr": "rate(notification_rabbitmq_messages_consumed_total[5m])",
           "legendFormat": "{{event_type}} - {{status}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -197,7 +211,11 @@
         {
           "expr": "histogram_quantile(0.95, rate(notification_template_rendering_seconds_bucket[5m]))",
           "legendFormat": "{{template}} - p95",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -224,7 +242,11 @@
         {
           "expr": "rate(notification_worker_batch_size_sum[5m]) / rate(notification_worker_batch_size_count[5m])",
           "legendFormat": "Average batch size",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -250,18 +272,18 @@
       "targets": [
         {
           "expr": "sum(rate(notification_emails_sent_total{status=\"sent\"}[5m])) / sum(rate(notification_emails_sent_total[5m])) * 100",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "format": "percent",
       "thresholds": "80,95",
       "colorBackground": true,
       "colorValue": false,
-      "colors": [
-        "#d44a3a",
-        "#e0b400",
-        "#299c46"
-      ],
+      "colors": ["#d44a3a", "#e0b400", "#299c46"],
       "sparkline": {
         "show": true,
         "lineColor": "rgb(31, 120, 193)",
@@ -281,7 +303,11 @@
       "targets": [
         {
           "expr": "sum(increase(notification_emails_sent_total[5m]))",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "format": "none",
@@ -306,7 +332,11 @@
         {
           "expr": "rate(notification_worker_errors_total[5m])",
           "legendFormat": "{{error_type}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ff4wqa35u3280a"
+          }
         }
       ],
       "yaxes": [
@@ -322,20 +352,14 @@
         "conditions": [
           {
             "evaluator": {
-              "params": [
-                0.05
-              ],
+              "params": [0.05],
               "type": "gt"
             },
             "operator": {
               "type": "and"
             },
             "query": {
-              "params": [
-                "A",
-                "5m",
-                "now"
-              ]
+              "params": ["A", "5m", "now"]
             },
             "reducer": {
               "params": [],
@@ -365,5 +389,19 @@
         "type": "dashboard"
       }
     ]
+  },
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "time": {
+    "from": "now-15m",
+    "to": "now"
   }
 }
