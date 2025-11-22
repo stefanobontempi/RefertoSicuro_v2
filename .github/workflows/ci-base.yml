@@ -7,6 +7,10 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  security-events: write
+
 env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "20"
@@ -97,7 +101,7 @@ jobs:
         run: |
           echo "Checking version files..."
 
-          for service in auth reports billing admin analytics notification; do
+          for service in auth billing admin analytics notification; do
             version_file="services/${service}/app/__version__.py"
             if [ -f "$version_file" ]; then
               echo "✅ ${service}: $(grep '__version__' $version_file)"
@@ -132,7 +136,7 @@ jobs:
           echo "Checking critical project files..."
 
           # Documentation
-          test -f "CLAUDE.md" && echo "✅ CLAUDE.md" || exit 1
+          test -f "claude.md" && echo "✅ claude.md" || exit 1
           test -f "README.md" && echo "✅ README.md" || exit 1
           test -f "docs/devops/VERSIONING.md" && echo "✅ VERSIONING.md" || exit 1
           test -f "docs/devops/BRANCHING.md" && echo "✅ BRANCHING.md" || exit 1
@@ -141,7 +145,7 @@ jobs:
           test -f "docker-compose.dev.yml" && echo "✅ docker-compose.dev.yml" || exit 1
 
           # Services
-          for service in auth reports billing admin analytics notification; do
+          for service in auth billing admin analytics notification; do
             test -d "services/${service}/app" && echo "✅ ${service} structure" || exit 1
           done
 
