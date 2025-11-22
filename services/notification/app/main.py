@@ -21,9 +21,57 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle."""
-    logger.info("Starting Notification Service...")
+    import asyncio
+
+    from app.core.logging import setup_logging
+    from app.services.event_consumer import get_event_consumer
+    from app.workers.email_worker import get_email_worker
+
+    # Setup structured logging
+    setup_logging()
+    logger.info("🚀 Starting Notification Service...")
+
+    # Start RabbitMQ event consumer
+    consumer = get_event_consumer()
+    consumer_task = None
+    try:
+        consumer_task = asyncio.create_task(consumer.start())
+        logger.info("   ✅ RabbitMQ consumer: ACTIVE")
+    except Exception as e:
+        logger.error(f"   ❌ Failed to start event consumer: {e}", exc_info=True)
+        # Continue startup even if consumer fails (for development)
+
+    # Start Email worker
+    worker = get_email_worker()
+    worker_task = None
+    try:
+        worker_task = asyncio.create_task(worker.start())
+        logger.info("   ✅ Email worker: ACTIVE")
+    except Exception as e:
+        logger.error(f"   ❌ Failed to start email worker: {e}", exc_info=True)
+
+    logger.info("✅ Notification Service started successfully")
+
     yield
-    logger.info("Shutting down Notification Service...")
+
+    # Shutdown
+    logger.info("🛑 Shutting down Notification Service...")
+
+    # Cancel both tasks
+    tasks_to_cancel = []
+    if consumer_task and not consumer_task.done():
+        consumer_task.cancel()
+        tasks_to_cancel.append(consumer_task)
+
+    if worker_task and not worker_task.done():
+        worker_task.cancel()
+        tasks_to_cancel.append(worker_task)
+
+    # Wait for graceful shutdown
+    if tasks_to_cancel:
+        await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+
+    logger.info("✅ Shutdown complete")
 
 
 # Create FastAPI application
@@ -92,6 +140,13 @@ async def readiness_check() -> Dict[str, Any]:
         "ready": all(checks.values()),
         "checks": checks,
     }
+
+
+# Include API routers
+from app.api.v1 import notifications, templates
+
+app.include_router(notifications.router)
+app.include_router(templates.router)
 
 
 # Service-specific endpoints

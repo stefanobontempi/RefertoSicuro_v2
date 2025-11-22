@@ -1,0 +1,44 @@
+===============================================
+BENVENUTO SU REFERTOSICURO
+===============================================
+
+Ciao {{ user_name }}!
+
+Grazie per esserti registrato su RefertoSicuro, la piattaforma AI-powered che rivoluziona la scrittura di referti medici.
+
+Per iniziare ad utilizzare tutti i servizi, devi prima verificare il tuo indirizzo email:
+
+VERIFICA IL TUO INDIRIZZO EMAIL:
+{{ verification_link }}
+
+-----------------------------------------------
+IL TUO TRIAL DI {{ trial_days }} GIORNI INIZIA ORA!
+-----------------------------------------------
+
+Hai accesso completo a tutte le funzionalità della piattaforma per i prossimi {{ trial_days }} giorni.
+
+COSA PUOI FARE CON REFERTOSICURO:
+
+✓ Ottimizzazione AI - Migliora i tuoi referti con l'intelligenza artificiale
+✓ 19+ Specializzazioni - Supporto per tutte le principali specialità mediche
+✓ Voice-to-Text - Dettatura vocale con riconoscimento avanzato
+✓ Conformità GDPR - Massima sicurezza per i dati medici
+
+NOTA IMPORTANTE:
+Questo link scadrà tra 24 ore.
+
+-----------------------------------------------
+
+Hai domande? Il nostro team di supporto è sempre disponibile:
+Email: {{ support_email }}
+
+Buon lavoro!
+Il Team di RefertoSicuro
+
+-----------------------------------------------
+RefertoSicuro - Piattaforma AI per l'ottimizzazione di referti medici
+Privacy Policy: {{ frontend_url }}/privacy
+Termini di Servizio: {{ frontend_url }}/terms
+Disiscriviti: {{ frontend_url }}/unsubscribe
+
+© 2025 RefertoSicuro. Tutti i diritti riservati.

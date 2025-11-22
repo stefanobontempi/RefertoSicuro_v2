@@ -1,0 +1,43 @@
+{% extends "_base.html" %}
+
+{% block title %}Verifica il tuo indirizzo email - RefertoSicuro{% endblock %}
+
+{% block header %}
+    <h1>Verifica il tuo indirizzo email</h1>
+{% endblock %}
+
+{% block content %}
+    <h2>Ciao {{ user_name }},</h2>
+
+    <p>Per completare la registrazione e iniziare ad utilizzare RefertoSicuro, devi verificare il tuo indirizzo email.</p>
+
+    <div style="text-align: center;">
+        <a href="{{ verification_link }}" class="button">
+            Verifica il tuo indirizzo email
+        </a>
+    </div>
+
+    <p>Se il pulsante non funziona, copia e incolla questo link nel tuo browser:</p>
+    <p style="font-size: 14px; color: #6c757d; word-break: break-all;">
+        {{ verification_link }}
+    </p>
+
+    <p style="font-size: 14px; color: #999999; margin-top: 30px;">
+        ⚠️ <em>Questo link scadrà tra 24 ore.</em>
+    </p>
+
+    <hr class="divider">
+
+    <p><strong>Perché verificare l'email?</strong></p>
+    <ul>
+        <li>✓ Maggiore sicurezza del tuo account</li>
+        <li>✓ Recupero password in caso di necessità</li>
+        <li>✓ Notifiche importanti sui tuoi referti</li>
+        <li>✓ Aggiornamenti sulle nuove funzionalità</li>
+    </ul>
+
+    <p style="margin-top: 30px;">
+        A presto!<br>
+        <strong>Il Team di RefertoSicuro</strong>
+    </p>
+{% endblock %}

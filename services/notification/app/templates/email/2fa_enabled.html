@@ -1,0 +1,65 @@
+{% extends "_base.html" %}
+
+{% block title %}Autenticazione a due fattori attivata - RefertoSicuro{% endblock %}
+
+{% block header %}
+    <h1>🔒 Autenticazione a due fattori attivata</h1>
+{% endblock %}
+
+{% block content %}
+    <h2>Ciao {{ user_name }},</h2>
+
+    <div class="alert alert-success">
+        <strong>✅ Ottimo lavoro!</strong><br>
+        Hai appena attivato l'autenticazione a due fattori (2FA) sul tuo account RefertoSicuro.
+    </div>
+
+    <p><strong>Dettagli attivazione:</strong></p>
+    <ul>
+        <li><strong>Data e ora:</strong> {{ enabled_at }}</li>
+        <li><strong>Codici di backup generati:</strong> {{ backup_codes_count }}</li>
+    </ul>
+
+    <hr class="divider">
+
+    <p><strong>Cos'è l'autenticazione a due fattori?</strong></p>
+    <p>La 2FA aggiunge un ulteriore livello di sicurezza al tuo account. Quando accedi, oltre alla password, ti verrà chiesto un codice temporaneo generato dalla tua app di autenticazione.</p>
+
+    <p><strong>Vantaggi della 2FA:</strong></p>
+    <ul>
+        <li>🔐 Protezione aggiuntiva contro accessi non autorizzati</li>
+        <li>🛡️ Sicurezza anche in caso di password compromessa</li>
+        <li>✅ Conformità alle best practice di sicurezza medica</li>
+    </ul>
+
+    <hr class="divider">
+
+    <div class="alert alert-warning">
+        <strong>📱 Importante - Codici di backup:</strong><br>
+        Hai ricevuto {{ backup_codes_count }} codici di backup al momento dell'attivazione.<br>
+        <strong>Conservali in un luogo sicuro!</strong> Ti serviranno se perdi l'accesso alla tua app di autenticazione.
+    </div>
+
+    <p><strong>Cosa fare ora:</strong></p>
+    <ol>
+        <li>Salva i codici di backup in un luogo sicuro (non in formato digitale)</li>
+        <li>Verifica che la tua app di autenticazione funzioni correttamente</li>
+        <li>Considera di configurare un metodo di backup (SMS o email)</li>
+    </ol>
+
+    <hr class="divider">
+
+    <p><strong>Non sei stato tu ad attivare la 2FA?</strong></p>
+    <p>Se non hai richiesto l'attivazione dell'autenticazione a due fattori, contatta immediatamente il nostro supporto.</p>
+
+    <div style="text-align: center;">
+        <a href="mailto:{{ support_email }}" class="button button-secondary">
+            Contatta il supporto
+        </a>
+    </div>
+
+    <p style="margin-top: 30px;">
+        Grazie per aver scelto la sicurezza!<br>
+        <strong>Il Team di RefertoSicuro</strong>
+    </p>
+{% endblock %}

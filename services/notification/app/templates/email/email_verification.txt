@@ -1,0 +1,31 @@
+===============================================
+VERIFICA IL TUO INDIRIZZO EMAIL
+===============================================
+
+Ciao {{ user_name }},
+
+Per completare la registrazione e iniziare ad utilizzare RefertoSicuro, devi verificare il tuo indirizzo email.
+
+VERIFICA IL TUO INDIRIZZO EMAIL:
+{{ verification_link }}
+
+NOTA IMPORTANTE:
+Questo link scadrà tra 24 ore.
+
+-----------------------------------------------
+PERCHÉ VERIFICARE L'EMAIL?
+-----------------------------------------------
+
+✓ Maggiore sicurezza del tuo account
+✓ Recupero password in caso di necessità
+✓ Notifiche importanti sui tuoi referti
+✓ Aggiornamenti sulle nuove funzionalità
+
+-----------------------------------------------
+
+A presto!
+Il Team di RefertoSicuro
+
+-----------------------------------------------
+RefertoSicuro - Piattaforma AI per l'ottimizzazione di referti medici
+© 2025 RefertoSicuro. Tutti i diritti riservati.

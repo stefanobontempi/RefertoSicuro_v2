@@ -1,0 +1,56 @@
+===============================================
+🔒 AUTENTICAZIONE A DUE FATTORI ATTIVATA
+===============================================
+
+Ciao {{ user_name }},
+
+✅ OTTIMO LAVORO!
+Hai appena attivato l'autenticazione a due fattori (2FA) sul tuo account RefertoSicuro.
+
+DETTAGLI ATTIVAZIONE:
+- Data e ora: {{ enabled_at }}
+- Codici di backup generati: {{ backup_codes_count }}
+
+-----------------------------------------------
+COS'È L'AUTENTICAZIONE A DUE FATTORI?
+-----------------------------------------------
+
+La 2FA aggiunge un ulteriore livello di sicurezza al tuo account.
+Quando accedi, oltre alla password, ti verrà chiesto un codice temporaneo generato dalla tua app di autenticazione.
+
+VANTAGGI DELLA 2FA:
+
+🔐 Protezione aggiuntiva contro accessi non autorizzati
+🛡️ Sicurezza anche in caso di password compromessa
+✅ Conformità alle best practice di sicurezza medica
+
+-----------------------------------------------
+📱 IMPORTANTE - CODICI DI BACKUP
+-----------------------------------------------
+
+Hai ricevuto {{ backup_codes_count }} codici di backup al momento dell'attivazione.
+CONSERVALI IN UN LUOGO SICURO!
+
+Ti serviranno se perdi l'accesso alla tua app di autenticazione.
+
+COSA FARE ORA:
+
+1. Salva i codici di backup in un luogo sicuro (non in formato digitale)
+2. Verifica che la tua app di autenticazione funzioni correttamente
+3. Considera di configurare un metodo di backup (SMS o email)
+
+-----------------------------------------------
+NON SEI STATO TU?
+-----------------------------------------------
+
+Se non hai richiesto l'attivazione della 2FA, contatta immediatamente il nostro supporto:
+{{ support_email }}
+
+-----------------------------------------------
+
+Grazie per aver scelto la sicurezza!
+Il Team di RefertoSicuro
+
+-----------------------------------------------
+RefertoSicuro - Piattaforma AI per l'ottimizzazione di referti medici
+© 2025 RefertoSicuro. Tutti i diritti riservati.

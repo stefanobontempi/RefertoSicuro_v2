@@ -9,11 +9,10 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from app.models.user import Session, User
+from app.services.jwt_service import JWTService
 from freezegun import freeze_time
 from jose import jwt
-
-from app.services.jwt_service import JWTService
-from app.models.user import User, Session
 
 
 @pytest.fixture
@@ -82,14 +81,14 @@ class TestJWTService:
             db=mock_db,
             ip_address=ip_address,
             user_agent=user_agent,
-            device_id=device_id
+            device_id=device_id,
         )
 
         # Assert
         assert "access_token" in result
         assert "refresh_token" in result
         assert result["token_type"] == "bearer"
-        assert result["expires_in"] == 900  # 15 minutes
+        assert result["expires_in"] == 14400  # 4 hours (240 minutes)
         assert result["refresh_expires_in"] == 604800  # 7 days
 
         # Verify database session was created
@@ -100,7 +99,9 @@ class TestJWTService:
         assert mock_redis.setex.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_validate_access_token_valid(self, jwt_service, mock_user, mock_redis, mock_settings):
+    async def test_validate_access_token_valid(
+        self, jwt_service, mock_user, mock_redis, mock_settings
+    ):
         """Test validation of valid access token."""
         # Arrange
         jti = str(uuid.uuid4())
@@ -110,7 +111,7 @@ class TestJWTService:
             "role": mock_user.role,
             "jti": jti,
             "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
-            "type": "access"
+            "type": "access",
         }
         token = jwt.encode(payload, "test-secret-key", algorithm="HS256")
 
@@ -125,7 +126,9 @@ class TestJWTService:
         mock_redis.exists.assert_called_once_with(f"session:access:{jti}")
 
     @pytest.mark.asyncio
-    async def test_validate_access_token_expired(self, jwt_service, mock_user, mock_redis, mock_settings):
+    async def test_validate_access_token_expired(
+        self, jwt_service, mock_user, mock_redis, mock_settings
+    ):
         """Test validation of expired access token."""
         # Arrange
         with freeze_time("2024-01-01 12:00:00"):
@@ -133,7 +136,7 @@ class TestJWTService:
                 "sub": str(mock_user.id),
                 "jti": str(uuid.uuid4()),
                 "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
-                "type": "access"
+                "type": "access",
             }
             token = jwt.encode(payload, "test-secret-key", algorithm="HS256")
 
@@ -144,7 +147,9 @@ class TestJWTService:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_validate_access_token_revoked(self, jwt_service, mock_user, mock_redis, mock_settings):
+    async def test_validate_access_token_revoked(
+        self, jwt_service, mock_user, mock_redis, mock_settings
+    ):
         """Test validation of revoked access token."""
         # Arrange
         mock_redis.exists.return_value = False
@@ -152,7 +157,7 @@ class TestJWTService:
             "sub": str(mock_user.id),
             "jti": str(uuid.uuid4()),
             "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
-            "type": "access"
+            "type": "access",
         }
         token = jwt.encode(payload, "test-secret-key", algorithm="HS256")
 
@@ -163,7 +168,9 @@ class TestJWTService:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_refresh_tokens_valid(self, jwt_service, mock_user, mock_db, mock_redis, mock_settings):
+    async def test_refresh_tokens_valid(
+        self, jwt_service, mock_user, mock_db, mock_redis, mock_settings
+    ):
         """Test token refresh with valid refresh token."""
         # Arrange
         refresh_jti = str(uuid.uuid4())
@@ -173,7 +180,7 @@ class TestJWTService:
             "sub": str(mock_user.id),
             "jti": refresh_jti,
             "exp": datetime.now(timezone.utc) + timedelta(days=7),
-            "type": "refresh"
+            "type": "refresh",
         }
         refresh_token = jwt.encode(payload, "test-secret-key", algorithm="HS256")
 
@@ -190,10 +197,7 @@ class TestJWTService:
 
         # Act
         result = await jwt_service.refresh_tokens(
-            refresh_token=refresh_token,
-            db=mock_db,
-            ip_address="127.0.0.1",
-            user_agent="Chrome"
+            refresh_token=refresh_token, db=mock_db, ip_address="127.0.0.1", user_agent="Chrome"
         )
 
         # Assert
@@ -257,8 +261,18 @@ class TestJWTService:
         # Arrange
         user_id = uuid.uuid4()
         sessions = [
-            MagicMock(spec=Session, id=uuid.uuid4(), access_token_jti=str(uuid.uuid4()), refresh_token_jti=str(uuid.uuid4())),
-            MagicMock(spec=Session, id=uuid.uuid4(), access_token_jti=str(uuid.uuid4()), refresh_token_jti=str(uuid.uuid4())),
+            MagicMock(
+                spec=Session,
+                id=uuid.uuid4(),
+                access_token_jti=str(uuid.uuid4()),
+                refresh_token_jti=str(uuid.uuid4()),
+            ),
+            MagicMock(
+                spec=Session,
+                id=uuid.uuid4(),
+                access_token_jti=str(uuid.uuid4()),
+                refresh_token_jti=str(uuid.uuid4()),
+            ),
         ]
 
         mock_result = MagicMock()

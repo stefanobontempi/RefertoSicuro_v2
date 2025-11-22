@@ -87,6 +87,7 @@ class Settings(BaseSettings):
     REGISTRATION_ENABLED: bool = Field(default=True, env="REGISTRATION_ENABLED")
     SOCIAL_LOGIN_ENABLED: bool = Field(default=False, env="SOCIAL_LOGIN_ENABLED")
     TWO_FACTOR_AUTH_ENABLED: bool = Field(default=True, env="TWO_FACTOR_AUTH_ENABLED")
+    REQUIRE_EMAIL_VERIFICATION: bool = Field(default=False, env="REQUIRE_EMAIL_VERIFICATION")
 
     # Secrets from Vault (cached)
     _vault_client: Optional[SecureConfig] = None
@@ -106,9 +107,17 @@ class Settings(BaseSettings):
 
     @property
     def JWT_SECRET(self) -> str:
-        """Get JWT secret from Vault (ALWAYS, no fallback)."""
+        """Get JWT secret from Vault (with test fallback to env var)."""
         if self._jwt_secret is None:
-            self._jwt_secret = self.vault_client.get_required("jwt_secret")
+            if self.ENVIRONMENT == "test":
+                # In test mode, use env var directly
+                import os
+
+                self._jwt_secret = os.getenv(
+                    "JWT_SECRET", "test_jwt_secret_key_min_32_characters_long_for_security"
+                )
+            else:
+                self._jwt_secret = self.vault_client.get_required("jwt_secret")
         return self._jwt_secret
 
     @property

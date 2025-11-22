@@ -5,7 +5,7 @@ Core user model with enhanced security features
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import Base
 from sqlalchemy import (
@@ -136,7 +136,7 @@ class User(Base):
     def is_locked(self) -> bool:
         """Check if user account is locked."""
         if self.locked_until:
-            return datetime.utcnow() < self.locked_until
+            return datetime.now(timezone.utc) < self.locked_until
         return False
 
     @property

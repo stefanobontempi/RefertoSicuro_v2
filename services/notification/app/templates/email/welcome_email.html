@@ -1,0 +1,54 @@
+{% extends "_base.html" %}
+
+{% block title %}Benvenuto su RefertoSicuro{% endblock %}
+
+{% block header %}
+    <h1>Benvenuto su RefertoSicuro!</h1>
+{% endblock %}
+
+{% block content %}
+    <h2>Ciao {{ user_name }}! 👋</h2>
+
+    <p>Grazie per esserti registrato su <strong>RefertoSicuro</strong>, la piattaforma AI-powered che rivoluziona la scrittura di referti medici.</p>
+
+    <p>Per iniziare ad utilizzare tutti i servizi, devi prima <strong>verificare il tuo indirizzo email</strong>:</p>
+
+    <div style="text-align: center;">
+        <a href="{{ verification_link }}" class="button">
+            Verifica il tuo indirizzo email
+        </a>
+    </div>
+
+    <div class="alert alert-info">
+        <strong>✨ Il tuo trial di {{ trial_days }} giorni inizia ora!</strong><br>
+        Hai accesso completo a tutte le funzionalità della piattaforma per i prossimi {{ trial_days }} giorni.
+    </div>
+
+    <hr class="divider">
+
+    <h2>Cosa puoi fare con RefertoSicuro:</h2>
+    <ul style="line-height: 2;">
+        <li>✅ <strong>Ottimizzazione AI</strong> - Migliora i tuoi referti con l'intelligenza artificiale</li>
+        <li>✅ <strong>19+ Specializzazioni</strong> - Supporto per tutte le principali specialità mediche</li>
+        <li>✅ <strong>Voice-to-Text</strong> - Dettatura vocale con riconoscimento avanzato</li>
+        <li>✅ <strong>Conformità GDPR</strong> - Massima sicurezza per i dati medici</li>
+    </ul>
+
+    <p>Se il pulsante non funziona, copia e incolla questo link nel tuo browser:</p>
+    <p style="font-size: 14px; color: #6c757d; word-break: break-all;">
+        {{ verification_link }}
+    </p>
+
+    <p style="font-size: 14px; color: #999999; margin-top: 30px;">
+        ⚠️ <em>Questo link scadrà tra 24 ore.</em>
+    </p>
+
+    <hr class="divider">
+
+    <p>Hai domande? Il nostro team di supporto è sempre disponibile all'indirizzo <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</p>
+
+    <p style="margin-top: 30px;">
+        Buon lavoro!<br>
+        <strong>Il Team di RefertoSicuro</strong>
+    </p>
+{% endblock %}

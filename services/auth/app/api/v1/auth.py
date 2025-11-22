@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.rate_limit import rate_limit
 from app.core.redis import redis_client
-from app.core.security import generate_verification_token, get_password_hash, verify_password
+from app.core.security import get_password_hash, verify_password
 from app.models.user import Session, User
 from app.schemas.auth import (
     EmailVerification,
@@ -23,8 +23,9 @@ from app.schemas.auth import (
     TokenResponse,
     UserRegister,
 )
-from app.services.email_service import email_service
+from app.services.event_service import event_service
 from app.services.jwt_service import jwt_service
+from app.services.token_service import token_service
 from app.utils.validators import validate_password_strength
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -52,10 +53,11 @@ async def register(user_data: UserRegister, request: Request, db: AsyncSession =
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     # Validate password strength
-    password_errors = validate_password_strength(user_data.password)
-    if password_errors:
+    is_valid, error_message = validate_password_strength(user_data.password)
+    if not is_valid:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail={"password_errors": password_errors}
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "password_validation_failed", "message": error_message},
         )
 
     # Create user
@@ -64,10 +66,10 @@ async def register(user_data: UserRegister, request: Request, db: AsyncSession =
         email_normalized=user_data.email.lower().replace(".", "").replace("+", ""),
         password_hash=get_password_hash(user_data.password),
         full_name=user_data.full_name,
-        phone_number=user_data.phone_number,
-        tax_code=user_data.tax_code,
-        preferred_language=user_data.preferred_language or "it",
-        notification_preferences=user_data.notification_preferences
+        phone_number=getattr(user_data, "phone_number", None),
+        tax_code=getattr(user_data, "tax_code", None),
+        preferred_language=getattr(user_data, "preferred_language", None) or "it",
+        notification_preferences=getattr(user_data, "notification_preferences", None)
         or {"email": True, "sms": False, "push": False},
     )
 
@@ -75,18 +77,23 @@ async def register(user_data: UserRegister, request: Request, db: AsyncSession =
     await db.commit()
     await db.refresh(user)
 
-    # Send verification email
-    verification_token = generate_verification_token()
-    await redis_client.setex(f"email_verify:{verification_token}", 86400, str(user.id))  # 24 hours
-
-    await email_service.send_verification_email(
-        email=user.email,
-        name=user.full_name,
-        token=verification_token,
-        language=user.preferred_language,
+    # Send verification email with hybrid token storage
+    verification_token = await token_service.create_email_verification_token(
+        user=user,
+        db=db,
+        ip_address=request.client.host if request else None,
+        user_agent=request.headers.get("User-Agent") if request else None,
     )
 
     logger.info(f"New user registered: {user.email}")
+
+    # Publish event to RabbitMQ (Notification Service will send the email)
+    await event_service.publish_user_registered(
+        user_id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        verification_token=verification_token,
+    )
 
     return MessageResponse(
         message="Registration successful. Please check your email to verify your account.",
@@ -170,6 +177,14 @@ async def login(
 
     logger.info(f"User logged in: {user.email}")
 
+    # Publish event to RabbitMQ
+    await event_service.publish_user_logged_in(
+        user_id=str(user.id),
+        email=user.email,
+        ip_address=request.client.host if request else None,
+        user_agent=request.headers.get("User-Agent"),
+    )
+
     return TokenResponse(**tokens)
 
 
@@ -212,6 +227,14 @@ async def logout(
 
     logger.info(f"User logged out: {current_user.email}")
 
+    # Publish event to RabbitMQ
+    if session:
+        await event_service.publish_user_logged_out(
+            user_id=str(current_user.id),
+            email=current_user.email,
+            session_id=str(session.id),
+        )
+
     return MessageResponse(message="Logged out successfully", success=True)
 
 
@@ -242,36 +265,36 @@ async def refresh_token(refresh_token: str, request: Request, db: AsyncSession =
 @router.post("/verify-email", response_model=MessageResponse)
 async def verify_email(data: EmailVerification, db: AsyncSession = Depends(get_db)):
     """
-    Verify email address with token.
+    Verify email address with token (hybrid storage lookup).
 
-    - Validates verification token
+    - Validates verification token (Redis + PostgreSQL)
     - Updates user email_verified status
-    - Removes token from Redis
+    - Marks token as used in audit trail
     """
-    # Get user ID from Redis
-    user_id = await redis_client.get(f"email_verify:{data.token}")
+    # Verify token using hybrid storage
+    user = await token_service.verify_email_verification_token(data.token, db)
 
-    if not user_id:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token"
         )
 
-    # Get user
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
     # Update verification status
     user.email_verified = True
     user.email_verified_at = datetime.now(timezone.utc)
+
+    # Mark token as used (removes from Redis + updates PostgreSQL)
+    await token_service.mark_email_verification_token_used(data.token, db)
+
     await db.commit()
 
-    # Remove token from Redis
-    await redis_client.delete(f"email_verify:{data.token}")
-
     logger.info(f"Email verified for user: {user.email}")
+
+    # Publish event to RabbitMQ
+    await event_service.publish_user_email_verified(
+        user_id=str(user.id),
+        email=user.email,
+    )
 
     return MessageResponse(message="Email verified successfully", success=True)
 
@@ -299,16 +322,24 @@ async def forgot_password(
             message="If the email exists, a reset link has been sent", success=True
         )
 
-    # Generate reset token
-    reset_token = generate_verification_token()
-    await redis_client.setex(f"password_reset:{reset_token}", 3600, str(user.id))  # 1 hour
-
-    # Send reset email
-    await email_service.send_password_reset_email(
-        email=user.email, name=user.full_name, token=reset_token, language=user.preferred_language
+    # Generate reset token with hybrid storage
+    reset_token = await token_service.create_password_reset_token(
+        user=user,
+        db=db,
+        ip_address=request.client.host if request else None,
+        user_agent=request.headers.get("User-Agent") if request else None,
     )
 
     logger.info(f"Password reset requested for: {user.email}")
+
+    # Publish event to RabbitMQ (Notification Service will send the email)
+    await event_service.publish_password_reset_requested(
+        user_id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        reset_token=reset_token,
+        ip_address=request.client.host if request else None,
+    )
 
     return MessageResponse(message="If the email exists, a reset link has been sent", success=True)
 
@@ -316,33 +347,28 @@ async def forgot_password(
 @router.post("/reset-password", response_model=MessageResponse)
 async def reset_password(data: PasswordReset, db: AsyncSession = Depends(get_db)):
     """
-    Reset password with token.
+    Reset password with token (hybrid storage lookup).
 
-    - Validates reset token
+    - Validates reset token (Redis + PostgreSQL)
     - Updates password
     - Revokes all existing sessions
+    - Marks token as used in audit trail
     """
-    # Get user ID from Redis
-    user_id = await redis_client.get(f"password_reset:{data.token}")
+    # Verify token using hybrid storage
+    user = await token_service.verify_password_reset_token(data.token, db)
 
-    if not user_id:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token"
         )
 
     # Validate new password
-    password_errors = validate_password_strength(data.new_password)
-    if password_errors:
+    is_valid, error_message = validate_password_strength(data.new_password)
+    if not is_valid:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail={"password_errors": password_errors}
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "password_validation_failed", "message": error_message},
         )
-
-    # Get user
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Update password
     user.password_hash = get_password_hash(data.new_password)
@@ -351,12 +377,19 @@ async def reset_password(data: PasswordReset, db: AsyncSession = Depends(get_db)
     # Revoke all sessions for security
     await jwt_service.revoke_all_user_sessions(user.id, db, "password_reset")
 
+    # Mark token as used (removes from Redis + updates PostgreSQL)
+    await token_service.mark_password_reset_token_used(data.token, db)
+
     await db.commit()
 
-    # Remove token from Redis
-    await redis_client.delete(f"password_reset:{data.token}")
-
     logger.info(f"Password reset completed for: {user.email}")
+
+    # Publish event to RabbitMQ
+    await event_service.publish_user_password_changed(
+        user_id=str(user.id),
+        email=user.email,
+        changed_by="password_reset",
+    )
 
     return MessageResponse(message="Password reset successfully", success=True)
 
@@ -441,6 +474,12 @@ async def verify_mfa(
         await redis_client.delete(f"mfa_setup:{current_user.id}")
 
         logger.info(f"MFA enabled for user: {current_user.email}")
+
+        # Publish event to RabbitMQ
+        await event_service.publish_user_2fa_enabled(
+            user_id=str(current_user.id),
+            email=current_user.email,
+        )
 
         return MessageResponse(
             message="Two-factor authentication enabled successfully", success=True

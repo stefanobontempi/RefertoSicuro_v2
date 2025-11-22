@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}RefertoSicuro{% endblock %}</title>
+    <style>
+        /* Reset */
+        body, p, h1, h2, h3, h4, h5, h6 { margin: 0; padding: 0; }
+        img { border: 0; }
+
+        /* Base */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Container */
+        .email-wrapper {
+            width: 100%;
+            background-color: #f5f5f5;
+            padding: 20px 0;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Header */
+        .email-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: #ffffff;
+            padding: 30px 40px;
+            text-align: center;
+        }
+
+        .email-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        /* Body */
+        .email-body {
+            padding: 40px;
+        }
+
+        .email-body h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333333;
+            margin: 0 0 20px 0;
+        }
+
+        .email-body p {
+            margin: 0 0 16px 0;
+            color: #555555;
+        }
+
+        /* Button */
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            background-color: #007bff;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .button-secondary {
+            background-color: #6c757d;
+        }
+
+        .button-secondary:hover {
+            background-color: #545b62;
+        }
+
+        .button-danger {
+            background-color: #dc3545;
+        }
+
+        .button-danger:hover {
+            background-color: #c82333;
+        }
+
+        /* Alert boxes */
+        .alert {
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            color: #0c5460;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #856404;
+            color: #856404;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border-left: 4px solid #721c24;
+            color: #721c24;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border-left: 4px solid #155724;
+            color: #155724;
+        }
+
+        /* Footer */
+        .email-footer {
+            background-color: #f8f9fa;
+            padding: 30px 40px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .email-footer p {
+            font-size: 14px;
+            color: #6c757d;
+            margin: 8px 0;
+        }
+
+        .email-footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .email-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Divider */
+        .divider {
+            border: 0;
+            border-top: 1px solid #e9ecef;
+            margin: 30px 0;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+                border-radius: 0 !important;
+            }
+
+            .email-header,
+            .email-body,
+            .email-footer {
+                padding: 20px !important;
+            }
+
+            .button {
+                display: block;
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <!-- Header -->
+            <div class="email-header">
+                <a href="{{ frontend_url }}" class="logo">RefertoSicuro</a>
+                {% block header %}{% endblock %}
+            </div>
+
+            <!-- Body -->
+            <div class="email-body">
+                {% block content %}{% endblock %}
+            </div>
+
+            <!-- Footer -->
+            <div class="email-footer">
+                <p><strong>RefertoSicuro</strong> - Piattaforma AI per l'ottimizzazione di referti medici</p>
+                <p>
+                    <a href="{{ frontend_url }}/privacy">Privacy Policy</a> |
+                    <a href="{{ frontend_url }}/terms">Termini di Servizio</a> |
+                    <a href="{{ frontend_url }}/unsubscribe">Disiscriviti</a>
+                </p>
+                <p style="font-size: 12px; color: #999999; margin-top: 20px;">
+                    Hai ricevuto questa email perché hai un account su RefertoSicuro.<br>
+                    Se non hai richiesto questa email, puoi ignorarla in sicurezza.
+                </p>
+                <p style="font-size: 12px; color: #999999;">
+                    © 2025 RefertoSicuro. Tutti i diritti riservati.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
