@@ -1,241 +1,369 @@
 {
-  "dashboard": {
-    "title": "Notification Service Dashboard",
-    "tags": ["notification", "email", "monitoring"],
-    "timezone": "browser",
-    "schemaVersion": 16,
-    "version": 1,
-    "refresh": "30s",
-    "panels": [
-      {
-        "id": 1,
-        "title": "Email Sending Rate",
-        "type": "graph",
-        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "rate(notification_emails_sent_total[5m])",
-            "legendFormat": "{{template}} - {{status}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "emails/sec", "label": "Rate"},
-          {"format": "short"}
-        ]
+  "title": "Notification Service Dashboard",
+  "tags": [
+    "notification",
+    "email",
+    "monitoring"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Email Sending Rate",
+      "type": "graph",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
       },
-      {
-        "id": 2,
-        "title": "Queue Size",
-        "type": "graph",
-        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "notification_queue_size",
-            "legendFormat": "{{status}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short", "label": "Emails"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 3,
-        "title": "Email Delivery Duration (p95)",
-        "type": "graph",
-        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(notification_email_delivery_seconds_bucket[5m]))",
-            "legendFormat": "{{template}} - p95",
-            "refId": "A"
-          },
-          {
-            "expr": "histogram_quantile(0.99, rate(notification_email_delivery_seconds_bucket[5m]))",
-            "legendFormat": "{{template}} - p99",
-            "refId": "B"
-          }
-        ],
-        "yaxes": [
-          {"format": "s", "label": "Duration"},
-          {"format": "short"}
-        ],
-        "alert": {
-          "conditions": [
-            {
-              "evaluator": {"params": [0.5], "type": "gt"},
-              "operator": {"type": "and"},
-              "query": {"params": ["A", "5m", "now"]},
-              "reducer": {"params": [], "type": "avg"},
-              "type": "query"
-            }
-          ],
-          "executionErrorState": "alerting",
-          "frequency": "1m",
-          "handler": 1,
-          "name": "Email Delivery Latency High",
-          "noDataState": "no_data",
-          "notifications": []
-        }
-      },
-      {
-        "id": 4,
-        "title": "SMTP Errors",
-        "type": "graph",
-        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "rate(notification_smtp_errors_total[5m])",
-            "legendFormat": "{{error_type}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "errors/sec", "label": "Rate"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 5,
-        "title": "RabbitMQ Message Processing",
-        "type": "graph",
-        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "rate(notification_rabbitmq_messages_consumed_total[5m])",
-            "legendFormat": "{{event_type}} - {{status}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "msg/sec", "label": "Rate"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 6,
-        "title": "Template Rendering Duration",
-        "type": "graph",
-        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(notification_template_rendering_seconds_bucket[5m]))",
-            "legendFormat": "{{template}} - p95",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "s", "label": "Duration"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 7,
-        "title": "Worker Batch Size",
-        "type": "graph",
-        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "rate(notification_worker_batch_size_sum[5m]) / rate(notification_worker_batch_size_count[5m])",
-            "legendFormat": "Average batch size",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short", "label": "Emails"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 8,
-        "title": "Email Success Rate",
-        "type": "singlestat",
-        "gridPos": {"x": 12, "y": 24, "w": 6, "h": 4},
-        "targets": [
-          {
-            "expr": "sum(rate(notification_emails_sent_total{status=\"sent\"}[5m])) / sum(rate(notification_emails_sent_total[5m])) * 100",
-            "refId": "A"
-          }
-        ],
-        "format": "percent",
-        "thresholds": "80,95",
-        "colorBackground": true,
-        "colorValue": false,
-        "colors": ["#d44a3a", "#e0b400", "#299c46"],
-        "sparkline": {
-          "show": true,
-          "lineColor": "rgb(31, 120, 193)",
-          "fillColor": "rgba(31, 118, 189, 0.18)"
-        }
-      },
-      {
-        "id": 9,
-        "title": "Total Emails Sent (5m)",
-        "type": "singlestat",
-        "gridPos": {"x": 18, "y": 24, "w": 6, "h": 4},
-        "targets": [
-          {
-            "expr": "sum(increase(notification_emails_sent_total[5m]))",
-            "refId": "A"
-          }
-        ],
-        "format": "none",
-        "valueName": "current",
-        "sparkline": {
-          "show": true,
-          "lineColor": "rgb(31, 120, 193)",
-          "fillColor": "rgba(31, 118, 189, 0.18)"
-        }
-      },
-      {
-        "id": 10,
-        "title": "Worker Errors",
-        "type": "graph",
-        "gridPos": {"x": 12, "y": 28, "w": 12, "h": 8},
-        "targets": [
-          {
-            "expr": "rate(notification_worker_errors_total[5m])",
-            "legendFormat": "{{error_type}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "errors/sec", "label": "Rate"},
-          {"format": "short"}
-        ],
-        "alert": {
-          "conditions": [
-            {
-              "evaluator": {"params": [0.05], "type": "gt"},
-              "operator": {"type": "and"},
-              "query": {"params": ["A", "5m", "now"]},
-              "reducer": {"params": [], "type": "avg"},
-              "type": "query"
-            }
-          ],
-          "executionErrorState": "alerting",
-          "frequency": "1m",
-          "handler": 1,
-          "name": "Worker Error Rate High",
-          "noDataState": "no_data",
-          "notifications": []
-        }
-      }
-    ],
-    "annotations": {
-      "list": [
+      "targets": [
         {
-          "builtIn": 1,
-          "datasource": "-- Grafana --",
-          "enable": true,
-          "hide": true,
-          "iconColor": "rgba(0, 211, 255, 1)",
-          "name": "Annotations & Alerts",
-          "type": "dashboard"
+          "expr": "rate(notification_emails_sent_total[5m])",
+          "legendFormat": "{{template}} - {{status}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "emails/sec",
+          "label": "Rate"
+        },
+        {
+          "format": "short"
         }
       ]
+    },
+    {
+      "id": 2,
+      "title": "Queue Size",
+      "type": "graph",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "notification_queue_size",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Emails"
+        },
+        {
+          "format": "short"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Email Delivery Duration (p95)",
+      "type": "graph",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(notification_email_delivery_seconds_bucket[5m]))",
+          "legendFormat": "{{template}} - p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(notification_email_delivery_seconds_bucket[5m]))",
+          "legendFormat": "{{template}} - p99",
+          "refId": "B"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "Duration"
+        },
+        {
+          "format": "short"
+        }
+      ],
+      "alert": {
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                0.5
+              ],
+              "type": "gt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": [
+                "A",
+                "5m",
+                "now"
+              ]
+            },
+            "reducer": {
+              "params": [],
+              "type": "avg"
+            },
+            "type": "query"
+          }
+        ],
+        "executionErrorState": "alerting",
+        "frequency": "1m",
+        "handler": 1,
+        "name": "Email Delivery Latency High",
+        "noDataState": "no_data",
+        "notifications": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "SMTP Errors",
+      "type": "graph",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(notification_smtp_errors_total[5m])",
+          "legendFormat": "{{error_type}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "errors/sec",
+          "label": "Rate"
+        },
+        {
+          "format": "short"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "RabbitMQ Message Processing",
+      "type": "graph",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(notification_rabbitmq_messages_consumed_total[5m])",
+          "legendFormat": "{{event_type}} - {{status}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "msg/sec",
+          "label": "Rate"
+        },
+        {
+          "format": "short"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Template Rendering Duration",
+      "type": "graph",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(notification_template_rendering_seconds_bucket[5m]))",
+          "legendFormat": "{{template}} - p95",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "Duration"
+        },
+        {
+          "format": "short"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Worker Batch Size",
+      "type": "graph",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(notification_worker_batch_size_sum[5m]) / rate(notification_worker_batch_size_count[5m])",
+          "legendFormat": "Average batch size",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Emails"
+        },
+        {
+          "format": "short"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Email Success Rate",
+      "type": "singlestat",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(notification_emails_sent_total{status=\"sent\"}[5m])) / sum(rate(notification_emails_sent_total[5m])) * 100",
+          "refId": "A"
+        }
+      ],
+      "format": "percent",
+      "thresholds": "80,95",
+      "colorBackground": true,
+      "colorValue": false,
+      "colors": [
+        "#d44a3a",
+        "#e0b400",
+        "#299c46"
+      ],
+      "sparkline": {
+        "show": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "fillColor": "rgba(31, 118, 189, 0.18)"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Total Emails Sent (5m)",
+      "type": "singlestat",
+      "gridPos": {
+        "x": 18,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(notification_emails_sent_total[5m]))",
+          "refId": "A"
+        }
+      ],
+      "format": "none",
+      "valueName": "current",
+      "sparkline": {
+        "show": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "fillColor": "rgba(31, 118, 189, 0.18)"
+      }
+    },
+    {
+      "id": 10,
+      "title": "Worker Errors",
+      "type": "graph",
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(notification_worker_errors_total[5m])",
+          "legendFormat": "{{error_type}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "errors/sec",
+          "label": "Rate"
+        },
+        {
+          "format": "short"
+        }
+      ],
+      "alert": {
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                0.05
+              ],
+              "type": "gt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": [
+                "A",
+                "5m",
+                "now"
+              ]
+            },
+            "reducer": {
+              "params": [],
+              "type": "avg"
+            },
+            "type": "query"
+          }
+        ],
+        "executionErrorState": "alerting",
+        "frequency": "1m",
+        "handler": 1,
+        "name": "Worker Error Rate High",
+        "noDataState": "no_data",
+        "notifications": []
+      }
     }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   }
 }
