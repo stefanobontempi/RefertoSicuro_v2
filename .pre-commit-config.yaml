@@ -1,0 +1,179 @@
+# Pre-commit Hooks Configuration - RefertoSicuro v2
+# ==================================================
+# Esegue check automatici prima di ogni commit locale
+#
+# Setup:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Usage:
+#   git commit  → hooks eseguiti automaticamente
+#   pre-commit run --all-files  → esegui manualmente su tutti i file
+#   pre-commit run --files path/to/file.py  → esegui su file specifico
+
+repos:
+  # ===========================================
+  # GENERAL CHECKS
+  # ===========================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # File basics
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        description: Rimuove spazi bianchi a fine riga
+
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        description: Assicura newline a fine file
+
+      - id: check-yaml
+        name: Check YAML
+        description: Valida sintassi file YAML
+
+      - id: check-json
+        name: Check JSON
+        description: Valida sintassi file JSON
+        exclude: "package-lock.json"
+
+      - id: check-toml
+        name: Check TOML
+        description: Valida sintassi file TOML
+
+      - id: check-added-large-files
+        name: Check Large Files
+        description: Previeni commit di file >500KB
+        args: ["--maxkb=500"]
+
+      - id: check-merge-conflict
+        name: Check Merge Conflicts
+        description: Verifica marker di conflitto
+
+      - id: check-case-conflict
+        name: Check Case Conflicts
+        description: Verifica conflitti case-sensitive
+
+      - id: mixed-line-ending
+        name: Fix Line Endings
+        description: Normalizza line endings (LF)
+        args: ["--fix=lf"]
+
+  # ===========================================
+  # PYTHON - FORMATTING
+  # ===========================================
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        name: Black Code Formatter
+        description: Formatta codice Python automaticamente
+        language_version: python3.12
+        args: ["--line-length=100"]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: Sort Python Imports
+        description: Ordina import alfabeticamente
+        args: ["--profile", "black", "--line-length", "100"]
+
+  # ===========================================
+  # PYTHON - LINTING
+  # ===========================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        name: Ruff Linter
+        description: Fast Python linter
+        args: ["--fix", "--exit-non-zero-on-fix"]
+
+  # ===========================================
+  # PYTHON - SECURITY
+  # ===========================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        name: Bandit Security Scan
+        description: Trova vulnerabilità comuni in Python
+        additional_dependencies: ["bandit[toml]"]
+        # Skip B101 (assert), B104 (bind all interfaces - necessario per Docker)
+        args: ["--skip", "B101,B104", "--severity-level", "medium"]
+
+  # ===========================================
+  # SECRETS DETECTION
+  # ===========================================
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        name: Gitleaks Secret Scanner
+        description: Previeni commit di secrets/passwords
+        # Molto importante per progetto medicale!
+
+  # ===========================================
+  # JAVASCRIPT/TYPESCRIPT (Frontend)
+  # ===========================================
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        name: Prettier Formatter
+        description: Formatta JS/TS/JSON/YAML
+        types_or: [javascript, jsx, ts, tsx, json, yaml, markdown]
+        exclude: "package-lock.json"
+        additional_dependencies:
+          - prettier@3.1.1
+          - "@trivago/prettier-plugin-sort-imports@4.3.0"
+
+  # ===========================================
+  # MARKDOWN & DOCS
+  # ===========================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        name: Markdown Lint
+        description: Linting per file Markdown
+        args: ["--fix"]
+
+  # ===========================================
+  # DOCKER
+  # ===========================================
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: Hadolint Dockerfile Linter
+        description: Best practices per Dockerfile
+
+# ===========================================
+# CONFIGURAZIONE GLOBALE
+# ===========================================
+default_language_version:
+  python: python3.12
+  node: 20.0.0
+
+# Timeout per hook singolo (secondi)
+default_stages: [pre-commit]
+
+# File/directory da escludere sempre
+exclude: |
+  (?x)(
+    ^\.hypothesis/|
+    ^\.pytest_cache/|
+    ^\.mypy_cache/|
+    ^\.ruff_cache/|
+    ^__pycache__/|
+    ^node_modules/|
+    ^\.venv/|
+    ^venv/|
+    ^\.git/|
+    migrations/versions/.*\.py$|
+    .*\.pyc$
+  )
+
+# Fail fast: ferma al primo errore
+fail_fast: false

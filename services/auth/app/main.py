@@ -5,26 +5,26 @@ Handles authentication, authorization, and user management
 with JWT tokens, refresh tokens, CSRF protection, and Vault integration.
 """
 
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Request
+from app.__version__ import __build__, __build_date__, __git_commit__, __service__, __version__
+from app.api import router
+from app.core.config import settings
+from app.core.database import Base, engine
+from app.core.logging import setup_logging
+from app.core.vault import vault_client
+from app.middleware.csrf import CSRFMiddleware
+from app.middleware.request_id import RequestIDMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
+from app.utils.rate_limiter import limiter
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from prometheus_client import make_asgi_app
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-
-from app.api import router
-from app.core.config import settings
-from app.core.database import engine, Base
-from app.core.logging import setup_logging
-from app.core.vault import vault_client
-from app.middleware.csrf import CSRFMiddleware
-from app.middleware.security import SecurityHeadersMiddleware
-from app.middleware.request_id import RequestIDMiddleware
-from app.utils.rate_limiter import limiter
 
 # Setup logging
 setup_logging()
@@ -114,8 +114,8 @@ app.include_router(router, prefix="/api/v1")
 async def root():
     """Root endpoint."""
     return {
-        "service": "Auth Service",
-        "version": "2.0.0",
+        "service": __service__,
+        "version": __version__,
         "status": "healthy",
     }
 
@@ -123,6 +123,8 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""
+    from datetime import datetime
+
     try:
         # Check database connection
         async with engine.connect() as conn:
@@ -133,6 +135,11 @@ async def health_check():
 
         return {
             "status": "healthy",
+            "service": __service__,
+            "version": __version__,
+            "build": __build__,
+            "build_date": __build_date__,
+            "timestamp": datetime.utcnow().isoformat(),
             "database": "connected",
             "vault": "connected" if vault_status else "disconnected",
         }
@@ -140,8 +147,22 @@ async def health_check():
         logger.error(f"Health check failed: {e}")
         return {
             "status": "unhealthy",
+            "service": __service__,
+            "version": __version__,
             "error": str(e),
         }
+
+
+@app.get("/version")
+async def version_info():
+    """Detailed version information."""
+    return {
+        "service": __service__,
+        "version": __version__,
+        "build": __build__,
+        "build_date": __build_date__,
+        "git_commit": __git_commit__,
+    }
 
 
 @app.get("/ready")
@@ -165,6 +186,7 @@ async def readiness_check():
 
         # Check Redis (for rate limiting/sessions)
         from app.core.redis import redis_client
+
         await redis_client.ping()
         checks["redis"] = True
 

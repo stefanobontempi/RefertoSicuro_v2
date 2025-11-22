@@ -4,11 +4,14 @@ Billing Service - Main Application
 Billing and Subscription Management Service
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
-from typing import Dict, Any
+from datetime import datetime
+from typing import Any, Dict
+
+from app.__version__ import __build__, __build_date__, __git_commit__, __service__, __version__
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -45,18 +48,34 @@ app.add_middleware(
 async def root() -> Dict[str, str]:
     """Root endpoint."""
     return {
-        "service": "Billing Service",
-        "version": "2.0.0",
+        "service": __service__,
+        "version": __version__,
         "status": "healthy",
     }
 
 
 @app.get("/health")
-async def health_check() -> Dict[str, str]:
+async def health_check() -> Dict[str, Any]:
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "service": "billing",
+        "service": __service__,
+        "version": __version__,
+        "build": __build__,
+        "build_date": __build_date__,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@app.get("/version")
+async def version_info() -> Dict[str, str]:
+    """Detailed version information."""
+    return {
+        "service": __service__,
+        "version": __version__,
+        "build": __build__,
+        "build_date": __build_date__,
+        "git_commit": __git_commit__,
     }
 
 
@@ -89,6 +108,7 @@ async def service_status() -> Dict[str, Any]:
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

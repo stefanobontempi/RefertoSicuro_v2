@@ -33,6 +33,7 @@ RefertoSicuro_v2/
 ## 🤖 Istruzioni Operative per l'Agente AI
 
 ### Principi di Sviluppo
+
 1. **Security First**: Ogni componente deve essere progettato con sicurezza in mente (encryption, validation, sanitization)
 2. **Clean Architecture**: Separazione netta tra business logic e infrastruttura
 3. **Test-Driven**: Minimo 80% code coverage, test su ogni feature
@@ -40,17 +41,20 @@ RefertoSicuro_v2/
 5. **Medical Compliance**: Ogni feature deve rispettare GDPR, AI Act e normative medicali
 
 ### Workflow di Sviluppo
-- **Branch Strategy**: `main` → `develop` → `feature/RS-XXX-description`
+
+- **Branch Strategy**: `main` → `develop` → `feature/RS-XXX-description` (vedi [docs/devops/BRANCHING.md](/docs/devops/BRANCHING.md))
 - **Commit Format**: tipo(scope): descrizione (es: `feat(auth): add 2FA support`)
-- **Code Review**: Ogni PR richiede almeno 1 review
+- **Code Review**: Ogni PR richiede almeno 1 review (2 per main)
 - **Testing**: Esegui sempre test locali prima di committare
 - **Security Scan**: Verifica vulnerabilità con `trivy` e `semgrep`
+- **Versioning**: Semantic versioning (MAJOR.MINOR.PATCH) - vedi [docs/devops/VERSIONING.md](/docs/devops/VERSIONING.md)
 
 ### Comandi Make Disponibili
 
 Il progetto include un Makefile completo per semplificare lo sviluppo. Usa `make help` per vedere tutti i comandi.
 
 #### 🚀 Comandi Principali
+
 ```bash
 # Setup & Initialization
 make setup              # Initial project setup completo
@@ -73,6 +77,7 @@ make traces             # Apre Jaeger UI per distributed tracing
 ```
 
 #### 🗄️ Database Operations
+
 ```bash
 make db-migrate         # Esegui database migrations
 make db-rollback        # Rollback ultima migration
@@ -86,6 +91,7 @@ make redis-cli          # Apre Redis CLI
 ```
 
 #### 🧪 Testing & Quality
+
 ```bash
 make test               # Esegui tutti i test (unit + integration + e2e)
 make test-unit          # Solo unit tests
@@ -99,6 +105,7 @@ make type-check         # Type checking (mypy, TypeScript)
 ```
 
 #### 🔧 Development Utilities
+
 ```bash
 make shell SERVICE=auth-service     # Shell in un servizio
 make python-shell SERVICE=reports   # Python REPL in un servizio
@@ -107,6 +114,7 @@ make prune              # ⚠️ Rimuovi TUTTI i container/volumi/immagini Docke
 ```
 
 #### 🎯 Service Groups Control
+
 ```bash
 make start-infra        # Solo infrastructure (DB, Redis, RabbitMQ)
 make start-monitoring   # Solo monitoring (Prometheus, Grafana, Jaeger)
@@ -116,12 +124,14 @@ make start-frontend     # Solo frontend
 ```
 
 #### 📚 Documentation
+
 ```bash
 make docs               # Genera documentazione API (OpenAPI)
 make diagram            # Genera diagrammi architettura
 ```
 
 ### Comandi Manuali Essenziali
+
 ```bash
 # Backend (se preferisci non usare Make)
 cd backend
@@ -141,6 +151,7 @@ docker-compose -f docker-compose.dev.yml up -d  # Avvia tutti i servizi
 ```
 
 ### API Design Guidelines
+
 - Usa sempre Pydantic per validazione input/output
 - Implementa rate limiting su ogni endpoint
 - Log strutturato con correlation IDs
@@ -150,7 +161,9 @@ docker-compose -f docker-compose.dev.yml up -d  # Avvia tutti i servizi
 ## 🎯 Scopo dell'Applicazione
 
 ### Problema che Risolve
+
 I medici italiani passano ore a scrivere referti medici che devono essere:
+
 - **Completi**: Includere tutte le informazioni cliniche rilevanti
 - **Precisi**: Utilizzare terminologia medica corretta
 - **Conformi**: Rispettare standard e linee guida della specializzazione
@@ -159,11 +172,13 @@ I medici italiani passano ore a scrivere referti medici che devono essere:
 ### Come Funziona RefertoSicuro
 
 1. **Input del Medico**
+
    - Il medico accede con credenziali sicure (JWT + 2FA opzionale)
    - Seleziona la specializzazione medica (19+ disponibili)
    - Inserisce il referto da migliorare (testo o dettatura vocale)
 
 2. **Elaborazione AI**
+
    - Azure OpenAI con assistente specializzato per quella specialità
    - Streaming SSE per risposta in tempo reale
    - Eliminazione immediata della risposta AI, nessun dato memorizzato salvo consent esplicito per debug, attivabile solo dall'utente
@@ -173,7 +188,6 @@ I medici italiani passano ore a scrivere referti medici che devono essere:
    - Struttura standard per la specializzazione
    - Completezza delle informazioni cliniche
    - **IMPORTANTE**: Output è sempre un suggerimento - responsabilità finale del medico
-
 
 ### Piani di Abbonamento
 
@@ -188,6 +202,7 @@ I medici italiani passano ore a scrivere referti medici che devono essere:
 ### 1. PROTEZIONE DATI MEDICI (Priorità Assoluta)
 
 #### Encryption
+
 ```python
 # Tutti i dati medici DEVONO essere criptati
 - At Rest: Fernet encryption per campi database sensibili
@@ -197,6 +212,7 @@ I medici italiani passano ore a scrivere referti medici che devono essere:
 ```
 
 #### Data Sanitization
+
 ```python
 # Prima di processare con AI, SEMPRE:
 def sanitize_medical_text(text: str) -> str:
@@ -213,6 +229,7 @@ def sanitize_medical_text(text: str) -> str:
 ### 2. AUTENTICAZIONE E AUTORIZZAZIONE
 
 #### JWT Implementation
+
 ```python
 # Access Token (4 ore max)
 access_token = {
@@ -232,6 +249,7 @@ access_token = {
 ```
 
 #### Rate Limiting Obbligatorio
+
 ```python
 RATE_LIMITS = {
     "anonymous": "10/minute",
@@ -244,6 +262,7 @@ RATE_LIMITS = {
 ### 3. COMPLIANCE NORMATIVA
 
 #### GDPR (Obbligatorio per Legge EU)
+
 ```python
 # API obbligatorie da implementare
 @router.post("/api/v1/gdpr/export")
@@ -266,6 +285,7 @@ async def rectify_user_data():
 ```
 
 #### AI Act Compliance (High-Risk Medical AI)
+
 ```python
 class AIComplianceManager:
     def log_ai_decision(self, request, response):
@@ -288,6 +308,7 @@ class AIComplianceManager:
 ```
 
 #### Medical Device Regulation (MDR)
+
 ```python
 # DISCLAIMER OBBLIGATORIO su ogni pagina
 MEDICAL_DISCLAIMER = """
@@ -434,6 +455,7 @@ security_metrics = {
 ### Dettaglio Microservizi - Responsabilità e Boundaries
 
 #### 1️⃣ **AUTH SERVICE** (Port: 8010)
+
 ```yaml
 Responsabilità:
   - Registrazione utenti con verifica email
@@ -470,6 +492,7 @@ Eventi Pubblicati (RabbitMQ):
 ```
 
 #### 2️⃣ **REPORTS SERVICE** (Port: 8011)
+
 ```yaml
 Responsabilità:
   - Elaborazione referti con AI
@@ -506,6 +529,7 @@ Integrations:
 ```
 
 #### 3️⃣ **BILLING SERVICE** (Port: 8012)
+
 ```yaml
 Responsabilità:
   - Gestione abbonamenti
@@ -549,6 +573,7 @@ Integrations:
 ```
 
 #### 4️⃣ **AUDIT SERVICE** (Port: 8016) ⚠️ CRITICO
+
 ```yaml
 Responsabilità:
   - Logging IMMUTABILE di tutte le operazioni mediche
@@ -585,6 +610,7 @@ Security:
 ```
 
 #### 5️⃣ **ADMIN SERVICE** (Port: 8013)
+
 ```yaml
 Responsabilità:
   - Dashboard amministrativo
@@ -617,6 +643,7 @@ Authorization:
 ```
 
 #### 6️⃣ **ANALYTICS SERVICE** (Port: 8014)
+
 ```yaml
 Responsabilità:
   - Raccolta metriche anonimizzate
@@ -648,6 +675,7 @@ Data Pipeline:
 ```
 
 #### 7️⃣ **NOTIFICATION SERVICE** (Port: 8015)
+
 ```yaml
 Responsabilità:
   - Invio email transazionali
@@ -684,6 +712,7 @@ Integrations:
 ### Comunicazione Inter-Service
 
 #### Sincrona (REST/HTTP)
+
 ```yaml
 Pattern: Request-Response
 Uso: Operazioni che richiedono risposta immediata
@@ -698,6 +727,7 @@ Retry: 3 tentativi con exponential backoff
 ```
 
 #### Asincrona (RabbitMQ)
+
 ```yaml
 Pattern: Event-Driven / Pub-Sub
 Uso: Operazioni che possono essere differite
@@ -718,8 +748,8 @@ Message Format:
     "event_type": "user.registered",
     "timestamp": "2024-01-01T00:00:00Z",
     "correlation_id": "uuid",
-    "payload": {...},
-    "metadata": {...}
+    "payload": { ... },
+    "metadata": { ... },
   }
 ```
 
@@ -770,8 +800,7 @@ Service Discovery:
   - Consul per produzione
   - Health checks ogni 30 secondi
 
-Health Check Endpoints:
-  GET /health/live    → Is service running?
+Health Check Endpoints: GET /health/live    → Is service running?
   GET /health/ready   → Is service ready to accept traffic?
   GET /health/startup → Has service completed initialization?
 
@@ -779,11 +808,7 @@ Response Format:
   {
     "status": "healthy|unhealthy",
     "timestamp": "2024-01-01T00:00:00Z",
-    "checks": {
-      "database": "ok",
-      "redis": "ok",
-      "rabbitmq": "ok"
-    }
+    "checks": { "database": "ok", "redis": "ok", "rabbitmq": "ok" },
   }
 ```
 
@@ -819,6 +844,7 @@ metrics_daily      -- Metriche aggregate
 ### Tech Stack Definitivo
 
 #### Backend
+
 ```yaml
 Language: Python 3.12
 Framework: FastAPI 0.115.0
@@ -831,6 +857,7 @@ Async: asyncio + httpx + aioredis
 ```
 
 #### Frontend
+
 ```yaml
 Framework: React 18.3
 Build: Vite 5
@@ -843,6 +870,7 @@ Testing: Vitest + React Testing Library
 ```
 
 #### Infrastructure
+
 ```yaml
 Container: Docker + Docker Compose
 Orchestration: Docker Swarm → Kubernetes
@@ -859,6 +887,7 @@ Hosting: Hetzner Cloud (EU)
 ## 🚀 Roadmap di Sviluppo
 
 ### Fase 1: MVP (Mesi 1-2)
+
 - [x] Setup infrastruttura base con Docker Compose
 - [ ] Auth Service: registrazione, login, JWT
 - [ ] Reports Service: 5 specialità core
@@ -867,6 +896,7 @@ Hosting: Hetzner Cloud (EU)
 - [ ] Compliance: GDPR base, disclaimer medicale
 
 ### Fase 2: Espansione (Mesi 3-4)
+
 - [ ] Tutte 19+ specialità mediche
 - [ ] PayPal integration
 - [ ] Voice-to-text con Web Audio API
@@ -875,6 +905,7 @@ Hosting: Hetzner Cloud (EU)
 - [ ] Analytics service con MongoDB
 
 ### Fase 3: Enterprise (Mesi 5-6)
+
 - [ ] Notification service (email, SMS)
 - [ ] Partner API per B2B
 - [ ] Sub-accounts per organizzazioni
@@ -883,6 +914,7 @@ Hosting: Hetzner Cloud (EU)
 - [ ] Mobile app React Native
 
 ### Fase 4: Scale (Mesi 7+)
+
 - [ ] Kubernetes migration
 - [ ] Multi-region deployment
 - [ ] Service mesh (Istio)
@@ -892,18 +924,21 @@ Hosting: Hetzner Cloud (EU)
 ## 📊 Metriche di Successo
 
 ### Performance Target
+
 - API Response: p95 < 500ms
 - Uptime: 99.9% (43 min/mese max)
 - Error Rate: < 0.1%
 - Test Coverage: > 80%
 
 ### Business Target
+
 - User Acquisition: 100 medici/mese
 - Conversion Rate: > 5% trial → paid
 - Churn Rate: < 5% mensile
 - NPS Score: > 50
 
 ### Compliance Target
+
 - GDPR: 100% API implementate
 - AI Act: Tutti log richiesti attivi
 - MDR: Disclaimer sempre visibile
@@ -912,6 +947,7 @@ Hosting: Hetzner Cloud (EU)
 ## 🛠️ Development Guidelines
 
 ### Testing Strategy
+
 ```bash
 # Unit tests (80% del totale)
 pytest tests/unit/ --cov=app --cov-report=html
@@ -924,6 +960,7 @@ playwright test
 ```
 
 ### Code Quality
+
 ```bash
 # Formatting
 black . --line-length=100
@@ -938,6 +975,7 @@ semgrep --config=auto
 ```
 
 ### Git Workflow
+
 ```bash
 # Feature branch
 git checkout -b feature/RS-123-description
@@ -976,6 +1014,7 @@ gh pr create --title "feat: 2FA support" --body "..."
 ## ⚠️ Guardrails - Regole Imperative per lo Sviluppo
 
 ### 1. NO FALLBACK CODE
+
 ```python
 # ❌ MAI FARE QUESTO:
 try:
@@ -988,6 +1027,7 @@ new_implementation()  # Le modifiche sono definitive, commit solo codice finale
 ```
 
 ### 2. CLEAN CODE PRINCIPLES
+
 - **DRY** (Don't Repeat Yourself): Estrai funzioni riusabili
 - **KISS** (Keep It Simple): Soluzioni semplici > soluzioni complesse
 - **YAGNI** (You Ain't Gonna Need It): Non implementare feature "per il futuro"
@@ -995,6 +1035,7 @@ new_implementation()  # Le modifiche sono definitive, commit solo codice finale
 - **Early Return**: Usa return anticipati invece di nesting profondo
 
 ### 3. DOCUMENTATION STANDARDS
+
 ```python
 def process_medical_report(
     text: str,
@@ -1033,6 +1074,7 @@ def process_medical_report(
 ```
 
 ### 4. CODE QUALITY STANDARDS
+
 - **Type Hints**: SEMPRE su parametri e return values
 - **Docstrings**: Su TUTTE le funzioni pubbliche (Google style)
 - **Comments**: Solo per logica NON ovvia, in inglese
@@ -1040,6 +1082,7 @@ def process_medical_report(
 - **Line Length**: Max 100 caratteri (configurato in black/prettier)
 
 ### 5. ERROR HANDLING
+
 ```python
 # ❌ MAI catch generico:
 except Exception:
@@ -1052,6 +1095,7 @@ except ValidationError as e:
 ```
 
 ### 6. SECURITY FIRST
+
 - **Input Validation**: SEMPRE validate prima di processare
 - **Output Encoding**: SEMPRE encode output per prevenire XSS
 - **SQL Queries**: SOLO tramite ORM, MAI query raw
@@ -1059,6 +1103,7 @@ except ValidationError as e:
 - **Logging**: MAI loggare dati sensibili (passwords, tokens, PII)
 
 ### 7. TESTING REQUIREMENTS
+
 ```python
 # Ogni feature DEVE avere:
 - Unit tests (minimo 80% coverage)
@@ -1073,6 +1118,7 @@ test_process_report_invalid_specialty_raises_validation_error()
 ```
 
 ### 8. COMMIT DISCIPLINE
+
 ```bash
 # ❌ MAI:
 git commit -m "fix"
@@ -1087,6 +1133,7 @@ git commit -m "test(billing): add integration tests for Stripe webhooks"
 ```
 
 ### 9. REFACTORING RULES
+
 - **No Dead Code**: Rimuovi IMMEDIATAMENTE codice non usato
 - **No Commented Code**: Cancella, non commentare (Git tiene la storia)
 - **No Debug Prints**: Usa logger con livelli appropriati
@@ -1094,6 +1141,7 @@ git commit -m "test(billing): add integration tests for Stripe webhooks"
 - **No Deep Nesting**: Max 3 livelli di indentazione
 
 ### 10. PERFORMANCE GUIDELINES
+
 - **Database**: Indici su campi di ricerca, eager loading per N+1
 - **Caching**: Redis per dati frequenti, TTL appropriati
 - **Async**: Usa async/await per I/O operations
@@ -1101,6 +1149,7 @@ git commit -m "test(billing): add integration tests for Stripe webhooks"
 - **Rate Limiting**: Su TUTTI gli endpoint pubblici
 
 ### 11. MICROSERVICES BOUNDARIES
+
 ```yaml
 # Ogni servizio DEVE:
 - Avere un singolo scopo ben definito
@@ -1112,25 +1161,99 @@ git commit -m "test(billing): add integration tests for Stripe webhooks"
 ```
 
 ### 12. MEDICAL DOMAIN SPECIFICS
+
 - **Disclaimer**: SEMPRE visibile su ogni response medica
 - **Audit Log**: OGNI operazione su dati medici
 - **Data Retention**: Rispetta SEMPRE policy di retention
 - **Anonymization**: PII removal prima di logging/analytics
 - **Compliance Check**: Ogni feature contro GDPR/AI Act checklist
 
-### 13. HISTORY TRACKING - OBBLIGATORIO
-```markdown
+### 13. DEVOPS & DEPLOYMENT - REGOLE CRITICHE
+
+```yaml
+VERSIONING (OBBLIGATORIO):
+  - Ogni microservizio DEVE avere __version__.py
+  - Semantic versioning: MAJOR.MINOR.PATCH
+  - Version in health endpoint response
+  - NO deploy senza version bump
+  - Documentazione: docs/devops/VERSIONING.md
+
+BRANCHING (RIGIDO):
+  - main: Solo production releases (protected, 2 reviewers)
+  - develop: Integration branch (protected, 1 reviewer)
+  - feature/RS-XXX-desc: Da develop, merge in develop
+  - hotfix/RS-XXX-desc: Da main, merge in main + develop
+  - NO force push su main/develop
+  - Documentazione: docs/devops/BRANCHING.md
+
+ENVIRONMENTS (OBBLIGATORI):
+  - development: docker-compose.dev.yml (local)
+  - staging: docker-compose.staging.yml (auto-deploy da develop)
+  - production: docker-compose.prod.yml (manual approval)
+  - Secrets: Solo da Vault, MAI in .env files per staging/prod
+
+CI/CD (AUTOMATICO):
+  - Security scan: Ogni push (Trivy, Semgrep, Gitleaks)
+  - Tests: Copertura >80% obbligatoria
+  - Build: Docker images su GHCR con SHA tag
+  - Deploy staging: Automatico su merge develop
+  - Deploy production: Manuale con approval
+  - Rollback: Capability sempre attiva
+
+SECURITY SCANNING (DAILY):
+  - Trivy: Container + filesystem vulnerabilities
+  - Semgrep: SAST code analysis
+  - Bandit: Python security linter
+  - Safety: Dependency vulnerabilities
+  - Gitleaks: Secrets detection
+  - NO merge se CRITICAL vulnerabilities
+
+COMPLIANCE (MEDICALE):
+  - Audit logging: OGNI operazione medica
+  - GDPR endpoints: export, delete, rectify
+  - AI Act: Decision logging con confidence
+  - Data retention: 7 anni per audit logs
+  - Encryption: At rest + in transit
+  - Anonymization: PII removal automatico
+
+MONITORING (OBBLIGATORIO):
+  - Prometheus: Application + business metrics
+  - Grafana: Dashboards real-time
+  - Jaeger: Distributed tracing
+  - Loki: Log aggregation
+  - Alerting: PagerDuty/Slack per critical
+
+BACKUP & DR:
+  - PostgreSQL: Backup daily, retention 30 giorni
+  - MongoDB: Backup daily, retention 30 giorni
+  - Vault: Backup daily, retention 90 giorni
+  - RTO: 4 ore, RPO: 1 ora
+  - Testing: Recovery test mensile
+```
+
+**Riferimenti**:
+
+- [DevOps Analysis](/docs/devops/DEVOPS-ANALYSIS.md)
+- [Implementation Roadmap](/docs/devops/DEVOPS-ROADMAP.md)
+- [Versioning Guide](/docs/devops/VERSIONING.md)
+- [Branching Strategy](/docs/devops/BRANCHING.md)
+
+### 14. HISTORY TRACKING - OBBLIGATORIO
+
+````markdown
 # SEMPRE aggiornare history.md dopo OGNI task completato
 
 ## Formato richiesto:
-| Data | Task | Stato | Note |
-|------|------|-------|------|
-| 2024-11-21 | Setup Docker Compose | completed | Tutti i servizi configurati |
-| 2024-11-21 | Auth Service JWT | in_progress | Implementazione in corso |
-| 2024-11-22 | Database Migrations | pending | Da iniziare |
-| 2024-11-22 | Security Audit | validated_from_stefano | Approvato |
+
+| Data       | Task                 | Stato                  | Note                        |
+| ---------- | -------------------- | ---------------------- | --------------------------- |
+| 2024-11-21 | Setup Docker Compose | completed              | Tutti i servizi configurati |
+| 2024-11-21 | Auth Service JWT     | in_progress            | Implementazione in corso    |
+| 2024-11-22 | Database Migrations  | pending                | Da iniziare                 |
+| 2024-11-22 | Security Audit       | validated_from_stefano | Approvato                   |
 
 ## Stati possibili:
+
 - pending: Task pianificato ma non iniziato
 - in_progress: Lavoro in corso
 - completed: Completato e testato
@@ -1138,17 +1261,21 @@ git commit -m "test(billing): add integration tests for Stripe webhooks"
 - blocked: In attesa di dipendenze
 
 ## Esempio di aggiornamento:
+
 ```bash
 # Dopo ogni task significativo:
 echo "| $(date +%Y-%m-%d) | $TASK_NAME | $STATUS | $NOTES |" >> history.md
 ```
+````
 
-## Regole:
+## Regole
+
 1. Aggiorna IMMEDIATAMENTE dopo completamento task
 2. Mai rimuovere entries precedenti
 3. Ordine cronologico (più recenti in alto)
 4. Descrizioni chiare e concise
 5. Note solo per informazioni critiche
+
 ```
 
 ---
@@ -1156,3 +1283,4 @@ echo "| $(date +%Y-%m-%d) | $TASK_NAME | $STATUS | $NOTES |" >> history.md
 **Ultimo Aggiornamento**: 2024-11-21
 **Versione**: 2.0.0
 **Status**: In Development - Fase Setup Iniziale
+```

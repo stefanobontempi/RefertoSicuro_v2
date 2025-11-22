@@ -1,17 +1,23 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import React, { useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 // import EnvironmentBadge from './components/common/EnvironmentBadge';
-import { AuthProvider } from './contexts/AuthContext';
-import GlobalAuthModal from './components/auth/GlobalAuthModal';
-import HomePage from './pages/HomePage';
-import ProfilePage from './pages/ProfilePage';
-import TemplatePage from './pages/TemplatePage';
-import PartnerKeys from './pages/PartnerKeys';
-import PricingPage from './pages/PricingPage';
-import PaymentSuccessPage from './pages/PaymentSuccessPage';
-import './styles/index.css';
-import './styles/auth.css';
+import { AuthProvider } from "./contexts/AuthContext";
+import GlobalAuthModal from "./components/auth/GlobalAuthModal";
+import HomePage from "./pages/HomePage";
+import ProfilePage from "./pages/ProfilePage";
+import TemplatePage from "./pages/TemplatePage";
+import PartnerKeys from "./pages/PartnerKeys";
+import PricingPage from "./pages/PricingPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import { VERSION } from "./config/version";
+import "./styles/index.css";
+import "./styles/auth.css";
 
 // Component to scroll to top on route change
 function ScrollToTop() {
@@ -31,12 +37,18 @@ function App() {
     if (window.__REFERTOSICURO_CONSOLE_RENDERED__) return;
     window.__REFERTOSICURO_CONSOLE_RENDERED__ = true;
 
-    console.log('%c\n           #######################################          \n      ################################################      \n    ####################################################    \n   #######################################################  \n  ########################################################  \n ########################################################## \n ######################             ####################### \n #################                         ################ \n ############        ################          ############ \n ############      ####################        ############ \n ############      #####################       ############ \n ############      ##########  ###########     ############ \n ############      ##########  ###########     ############ \n ############      #######        ########     ############ \n ############      ##########  ###########     ############ \n ############      ##########  ###########     ############ \n #############     #######################     ############ \n #############     #######################    ############# \n ##############    #####             #####    ############# \n ##############    #######################    ############# \n ###############   #####        ##########   ############## \n ################   ######################  ############### \n #################  #####################  ################ \n ###################                     ################## \n ####################                  #################### \n ######################             ####################### \n ##########################      ########################## \n  ########################################################  \n   ######################################################   \n    ####################################################    \n      ################################################      \n           #######################################           \n\n%cRefertoSicuro%c | IusMedical S.r.l.s.\n%cSistema AI per validazione referti medici\n\n%c⚠️  Non incollare codice in questa console - rischio sicurezza account!',
-      'color: #5399d9; font-family: monospace; font-size: 10px; line-height: 8px;',
-      'color: #5399d9; font-size: 16px; font-weight: bold; font-family: sans-serif;',
-      'color: #333; font-size: 14px; font-family: sans-serif;',
-      'color: #666; font-size: 12px; font-style: italic; font-family: sans-serif;',
-      'color: #d32f2f; font-size: 12px; font-weight: bold; font-family: sans-serif;'
+    console.log(
+      "%c\n           #######################################          \n      ################################################      \n    ####################################################    \n   #######################################################  \n  ########################################################  \n ########################################################## \n ######################             ####################### \n #################                         ################ \n ############        ################          ############ \n ############      ####################        ############ \n ############      #####################       ############ \n ############      ##########  ###########     ############ \n ############      ##########  ###########     ############ \n ############      #######        ########     ############ \n ############      ##########  ###########     ############ \n ############      ##########  ###########     ############ \n #############     #######################     ############ \n #############     #######################    ############# \n ##############    #####             #####    ############# \n ##############    #######################    ############# \n ###############   #####        ##########   ############## \n ################   ######################  ############### \n #################  #####################  ################ \n ###################                     ################## \n ####################                  #################### \n ######################             ####################### \n ##########################      ########################## \n  ########################################################  \n   ######################################################   \n    ####################################################    \n      ################################################      \n           #######################################           \n\n%cRefertoSicuro%c | IusMedical S.r.l.s.\n%cSistema AI per validazione referti medici\n%cVersion: " +
+        VERSION.app +
+        " (Build: " +
+        VERSION.build +
+        ")\n\n%c⚠️  Non incollare codice in questa console - rischio sicurezza account!",
+      "color: #5399d9; font-family: monospace; font-size: 10px; line-height: 8px;",
+      "color: #5399d9; font-size: 16px; font-weight: bold; font-family: sans-serif;",
+      "color: #333; font-size: 14px; font-family: sans-serif;",
+      "color: #666; font-size: 12px; font-style: italic; font-family: sans-serif;",
+      "color: #888; font-size: 11px; font-family: monospace;",
+      "color: #d32f2f; font-size: 12px; font-weight: bold; font-family: sans-serif;",
     );
   }, []);
 
@@ -61,7 +73,10 @@ function App() {
               <Route path="/partner-keys" element={<PartnerKeys />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/success" element={<PaymentSuccessPage />} />
-              <Route path="/subscription/success" element={<PaymentSuccessPage />} />
+              <Route
+                path="/subscription/success"
+                element={<PaymentSuccessPage />}
+              />
             </Routes>
           </div>
         </Router>
